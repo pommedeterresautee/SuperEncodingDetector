@@ -24,30 +24,74 @@
 
 package com.taj.unicode_detector
 
-import java.io.{File, FileInputStream}
+import java.io.{RandomAccessFile, File}
 
+import akka.actor._
+import akka.routing.RoundRobinRouter
+
+
+sealed trait AkkaMessage
+case class Calculate(path:String) extends AkkaMessage
+case class Work(start: Int, filePath: String, startRead: Long, length: Int) extends AkkaMessage
+case class Result(value: Boolean) extends AkkaMessage
+
+
+class FileWorker extends Actor {
+
+  def receive = {
+    case Work(start, bigDataFilePath, startRead, length) =>
+      println("Enter in Worker")
+      sender ! analyzeBlock(bigDataFilePath, startRead, length)
+  }
+
+  def analyzeBlock(path: String, startRead: Long, length: Int):Result = {
+    val randomAccessFile = new RandomAccessFile(path, "r")
+    var isASCII:Boolean = false
+    try{
+       isASCII = Iterator
+        .continually(randomAccessFile.read())
+        .takeWhile(c => c != -1)
+        .take(length)
+        .forall(Character.UnicodeBlock.of(_) == Character.UnicodeBlock.BASIC_LATIN)
+
+    } finally {
+       randomAccessFile.close()
+    }
+    Result(isASCII)
+}
+}
+
+class Master(nrOfWorkers: Int)
+  extends Actor {
+  val start: Long = System.currentTimeMillis
+  val workerRouter = context.actorOf(
+    Props[FileWorker].withRouter(RoundRobinRouter(nrOfWorkers)), name = "workerRouter")
+
+  def receive = {
+    case Calculate(path) =>
+      println("Enter in Master")
+      workerRouter ! Work(0, path, 0, 1000)
+    case Result(isASCII) => println(if (isASCII) "ascii" else "non ascii")
+      context.stop(self)
+  }
+}
 
 object main extends App {
 
   val pathToFEC = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\FEC.TXT"
-  val pathToTest = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\FEC_TEST.TXT"
   val percentage = 10
 
-  var bytesToRead = new File(pathToFEC).length() * percentage / 100
+  val bytesToRead = if(Int.MaxValue < new File(pathToFEC).length() * percentage / 100) {
+    println(s"The analyze of the file will be limited to ${Int.MaxValue / (1024 * 1024)}Mb")
+    Int.MaxValue
+  } else new File(pathToFEC).length() * percentage / 100
 
-  if(Int.MaxValue > bytesToRead) {
-    println(s"According to the parameters you have requested to test ${bytesToRead / (1024 * 1024)}Mb.\n" +
-      s"The analyze will be limited to ${Int.MaxValue / (1024 * 1024)}Mb")
-    bytesToRead = Int.MaxValue
-  }
+  val workerCount = Runtime.getRuntime.availableProcessors
 
-  val is = new FileInputStream(pathToFEC)
+  val system = ActorSystem("ASCIIdetector")
 
-  val isASCII = Iterator
-    .continually(is.read())
-    .take(bytesToRead.toInt)
-    .forall(_ <= 127)
-  //.forall(mChar => !(Character.UnicodeBlock.of(mChar)==Character.UnicodeBlock.BASIC_LATIN))
+  val master = system.actorOf(Props(new Master(workerCount)), name = "master")
 
-  println(if (isASCII) "ascii" else "non ascii")
+  // start the calculation
+  master ! Calculate(pathToFEC)
 }
