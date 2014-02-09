@@ -33,19 +33,19 @@ import akka.routing.RoundRobinRouter
 sealed trait AkkaMessage
 
 case class AnalyzeFile(path: String) extends AkkaMessage
-case class AnalyzeBlock(filePath: String, startRead: Long, length: Int) extends AkkaMessage
+case class AnalyzeBlock(filePath: String, startRead: Long, length: Long) extends AkkaMessage
 case class Result(value: Boolean) extends AkkaMessage
-case class ToPrint(textResult: String, timeElapsed:Long) extends AkkaMessage
+case class ToPrint(textResult: String, timeElapsed: Long) extends AkkaMessage
 
 class TheLogger extends Actor {
   def receive = {
     case ToPrint(text, time) ⇒
       println(s"the result of the analyze is $text and has been obtained in ${time/1000}s")
-      context.system.shutdown()
+      context.system.shutdown() // stop all the actors
   }
 }
 
-class FileAnalyzer(logger:ActorRef, nbrOfWorkers: Int, totalLengthToAnalyze:Int) extends Actor {
+class FileAnalyzer(logger:ActorRef, nbrOfWorkers: Int, totalLengthToAnalyze:Long) extends Actor {
   val startTime = System.currentTimeMillis // to compute time elapsed to give a result
   val router = context.actorOf(Props[BlockAnalyzer].withRouter(RoundRobinRouter(nbrOfWorkers)), name = "workerRouter")
   val lengthPerWorkerToAnalyze = totalLengthToAnalyze / nbrOfWorkers
@@ -55,7 +55,7 @@ class FileAnalyzer(logger:ActorRef, nbrOfWorkers: Int, totalLengthToAnalyze:Int)
   def receive = {
     case AnalyzeFile(path) =>
       println("Start the processing...")
-      (0 to nbrOfWorkers-1)
+      (0 to nbrOfWorkers - 1)
         .foreach(workerNbr => 
         router ! AnalyzeBlock(path, workerNbr * lengthPerWorkerToAnalyze, lengthPerWorkerToAnalyze))
     case Result(isBlockASCII) => 
@@ -63,7 +63,7 @@ class FileAnalyzer(logger:ActorRef, nbrOfWorkers: Int, totalLengthToAnalyze:Int)
       resultOfAnalyze &= isBlockASCII
       if(resultReceived == nbrOfWorkers || !resultOfAnalyze){
         logger ! ToPrint(if (isBlockASCII) "ascii" else "non ascii", System.currentTimeMillis() - startTime)
-        context.stop(self)
+        context.stop(self) // stop this actor and its children
       }
   }
 }
@@ -78,15 +78,16 @@ class BlockAnalyzer extends Actor {
       println(s"Stop analyze of block $ID")
   }
 
-  def analyzeBlock(path: String, startRead: Long, lengthOfBlockToAnalyze: Int): Result = {
+  def analyzeBlock(path: String, startRead: Long, lengthOfBlockToAnalyze: Long): Result = {
+    val limitToAnalyze = startRead + lengthOfBlockToAnalyze
     val randomAccessFile = new RandomAccessFile(path, "r")
     randomAccessFile.seek(startRead)
     var isASCII = false
     try {
       isASCII = Iterator
         .continually(randomAccessFile.read())
-        .takeWhile(c => c != -1) // stop when the end of file is reached
-        .take(lengthOfBlockToAnalyze)
+        .takeWhile(c => c != -1
+        || randomAccessFile.getFilePointer <= limitToAnalyze) // stop when the end of file || block is reached
         .forall(Character.UnicodeBlock.of(_) == Character.UnicodeBlock.BASIC_LATIN)
     } finally {
       randomAccessFile.close()
@@ -99,10 +100,7 @@ object main extends App {
   val pathToFEC = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\FEC.TXT"
   val percentageToAnalyze = 20
 
-  val bytesToRead:Int = if (new File(pathToFEC).length() * percentageToAnalyze / 100 >= Int.MaxValue) {
-    println(s"The analyze of the file will be limited to ${Int.MaxValue / (1024 * 1024)}Mb")
-    Int.MaxValue
-  } else (new File(pathToFEC).length() * percentageToAnalyze / 100).toInt
+  val bytesToRead = new File(pathToFEC).length() * percentageToAnalyze / 100
 
   val workerCount = Runtime.getRuntime.availableProcessors
 
