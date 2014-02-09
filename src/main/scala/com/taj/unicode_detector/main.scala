@@ -24,22 +24,30 @@
 
 package com.taj.unicode_detector
 
-
-import scalaz.stream._
-import scalaz.concurrent.Task
+import java.io.{File, FileInputStream}
 
 
-object main extends App{
+object main extends App {
 
-  val converter: Task[Unit] = io.linesR("testdata/fahrenheit.txt").
-    filter(s => !s.trim.isEmpty && !s.startsWith("//")).
-    map(line => fahrenheitToCelsius(line.toDouble).toString).
-    intersperse("\n").
-    pipe(process1.utf8Encode).
-    to(io.fileChunkW("testdata/celsius.txt")).
-    run
+  val pathToFEC = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\FEC.TXT"
+  val pathToTest = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\FEC_TEST.TXT"
+  val percentage = 10
 
-  // at the end of the universe...
-  val u: Unit = converter.run
+  var bytesToRead = new File(pathToFEC).length() * percentage / 100
 
+  if(Int.MaxValue > bytesToRead) {
+    println(s"According to the parameters you have requested to test ${bytesToRead / (1024 * 1024)}Mb.\n" +
+      s"The analyze will be limited to ${Int.MaxValue / (1024 * 1024)}Mb")
+    bytesToRead = Int.MaxValue
+  }
+
+  val is = new FileInputStream(pathToFEC)
+
+  val isASCII = Iterator
+    .continually(is.read())
+    .take(bytesToRead.toInt)
+    .forall(_ <= 127)
+  //.forall(mChar => !(Character.UnicodeBlock.of(mChar)==Character.UnicodeBlock.BASIC_LATIN))
+
+  println(if (isASCII) "ascii" else "non ascii")
 }
