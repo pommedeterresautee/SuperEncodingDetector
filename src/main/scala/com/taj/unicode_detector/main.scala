@@ -73,7 +73,7 @@ class BlockAnalyzer extends Actor {
   def receive = {
     case AnalyzeBlock(bigDataFilePath, startRead, length) =>
       val ID = startRead / length
-      println(s"Start analyze of block $ID [$startRead - ${startRead + length - 1}]")
+      println(s"Start analyze of block $ID [$startRead - ${startRead + length}[")
       sender ! analyzeBlock(bigDataFilePath, startRead, length)
       println(s"Stop analyze of block $ID")
   }
@@ -81,14 +81,18 @@ class BlockAnalyzer extends Actor {
   def analyzeBlock(path: String, startRead: Long, lengthOfBlockToAnalyze: Long): Result = {
     val limitToAnalyze = startRead + lengthOfBlockToAnalyze
     val randomAccessFile = new RandomAccessFile(path, "r")
-    randomAccessFile.seek(startRead)
+    val buffer = new Array[Byte](main.bufferSize)
+
     var isASCII = false
     try {
+      randomAccessFile.seek(startRead)
       isASCII = Iterator
-        .continually(randomAccessFile.read())
+        .continually(randomAccessFile.read(buffer))
         .takeWhile(c => c != -1
-        || randomAccessFile.getFilePointer <= limitToAnalyze) // stop when the end of file || block is reached
-        .forall(Character.UnicodeBlock.of(_) == Character.UnicodeBlock.BASIC_LATIN)
+        && randomAccessFile.getFilePointer <= limitToAnalyze + main.bufferSize) // stop when the end of file || block is reached
+        .flatMap(_ => buffer)
+        .map(_.toInt)
+        .forall{testedByte => testedByte >= 0 && testedByte <= 127}
     } finally {
       randomAccessFile.close()
     }
@@ -97,12 +101,15 @@ class BlockAnalyzer extends Actor {
 }
 
 object main extends App {
-  val pathToFEC = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\FEC.TXT"
-  val percentageToAnalyze = 20
+  val bufferSize = 1024*1024*10
+  val pathToFEC = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\test.txt"
+  val percentageToAnalyze = 100
 
   val bytesToRead = new File(pathToFEC).length() * percentageToAnalyze / 100
 
-  val workerCount = Runtime.getRuntime.availableProcessors
+  // Determine the minimum of Workers depending of the size of the file and the size of the buffer.
+  // If we are working on a small file, start less workers, if it s a big file, use the number of cores.
+  val workerCount = (1 to Runtime.getRuntime.availableProcessors).find(_ * bufferSize >= bytesToRead).getOrElse(Runtime.getRuntime.availableProcessors)
 
   val system = ActorSystem("AsciiDetector")
 
@@ -111,3 +118,15 @@ object main extends App {
 
   master ! AnalyzeFile(pathToFEC)
 }
+
+/*
+* isASCII = Iterator
+        .continually(randomAccessFile.read(buffer))
+        .takeWhile(c => c != -1
+        && randomAccessFile.getFilePointer <= limitToAnalyze + main.bufferSize) // stop when the end of file || block is reached
+        .zipWithIndex
+        .flatMap{case(_, bufferCounter) => buffer.map((_, bufferCounter))}
+        .zipWithIndex
+        .map{case((byte, bufferCounter), arrayCounter) => (byte, bufferCounter, arrayCounter)}
+        .find{case(testedByte, bufferCounter, arrayCounter) => testedByte < 0 && testedByte > 127}
+* */
