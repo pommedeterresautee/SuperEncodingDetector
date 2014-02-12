@@ -28,6 +28,7 @@ import java.io.{RandomAccessFile, File}
 
 import akka.actor._
 import akka.routing.RoundRobinRouter
+import scala.xml.include.sax.EncodingHeuristics
 
 
 sealed trait AkkaMessage
@@ -101,6 +102,11 @@ class BlockAnalyzer extends Actor {
 }
 
 object main extends App {
+
+  //For the BOM detection
+  //EncodingHeuristics
+
+
   val bufferSize = 1024*1024*10
   val pathToFEC = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\test.txt"
   val percentageToAnalyze = 100
