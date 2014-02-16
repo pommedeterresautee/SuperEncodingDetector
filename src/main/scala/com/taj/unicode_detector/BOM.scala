@@ -2,8 +2,17 @@ package com.taj.unicode_detector
 
 import java.io.FileInputStream
 
+/**
+ * Contain property of each BOM.
+ * @param name Name of the encoding type.
+ * @param BOM List of values of the first bytes when file is not an XML.
+ * @param BOM_XML List of values of the first bytes when file is an XML.
+ */
 case class FileEncoding(name: String, BOM: List[Int], BOM_XML: List[Int])
 
+/**
+ * Main class to detect a file encoding based on its BOM.
+ */
 object BOM {
   val bigUCS4 = FileEncoding("UCS-4", List(0x00, 0x00, 0xFE, 0xFF), List(0x00, 0x00, 0x00, '<'))
   val littleUCS4 = FileEncoding("UCS-4", List(0xFF, 0xFE, 0x00, 0x00), List('<', 0x00, 0x00, 0x00))
@@ -15,20 +24,21 @@ object BOM {
   //val UTF8_WITHOUT_BOM  = BOM("UTF-8", List(), List('<' , '?' , 'x' , 'm' ))
   val ASCII = FileEncoding("ASCII", List(), List('<', '?', 'x', 'm'))
 
+  /**
+   * Detects the encoding of a file based on its BOM.
+   * @param file path to the file.
+   * @return the encoding. If no BOM detected, send back ASCII encoding.
+   */
   def detect(file: String): FileEncoding = {
     val in = new FileInputStream(file)
     var ret: FileEncoding = null
     val bytesToRead = 1024 // enough to read most XML encoding declarations
-    def resetAndRet = {
-      in.reset(); ret
-    }
 
     // This may fail if there are a lot of space characters before the end
     // of the encoding declaration
     in mark bytesToRead
     val bytes = List(in.read, in.read, in.read, in.read)
 
-    // first look for byte order mark
     ret = bytes match {
       case bigUCS4.BOM            | bigUCS4.BOM_XML           => bigUCS4
       case littleUCS4.BOM         | littleUCS4.BOM_XML        => littleUCS4
