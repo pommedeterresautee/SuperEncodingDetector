@@ -24,7 +24,7 @@
 
 package com.taj.unicode_detector
 
-import java.io.RandomAccessFile
+import java.io.{File, RandomAccessFile}
 
 import akka.actor._
 import akka.routing.RoundRobinRouter
@@ -44,7 +44,7 @@ object ParamAkka {
 class TheLogger extends Actor {
   def receive = {
     case FinalFullCheckResult(isBlockASCII, time) ⇒
-      println(s"the result of the analyze is ${if (isBlockASCII) "ascii" else "non ascii"} and has been obtained in "/*${time/1000}s"*/)
+      println(s"the result of the analyze is ${if (isBlockASCII) "ascii" else "non ascii"} and has been obtained in ${time/1000}s")
       context.system.shutdown() // stop all the actors
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
@@ -61,6 +61,7 @@ class FileAnalyzer(logger:ActorRef, nbrOfWorkers: Int, totalLengthToAnalyze:Long
   def receive = {
     case AnalyzeFile(path) =>
       println("Start the processing...")
+      if(!new File(path).exists()) throw new IllegalArgumentException(s"Provided file doesn't exist: $path")
       (0 to nbrOfWorkers - 1)
         .foreach(workerNbr => 
         router ! AnalyzeBlock(path, workerNbr * lengthPerWorkerToAnalyze, lengthPerWorkerToAnalyze, ParamAkka.bufferSize))
