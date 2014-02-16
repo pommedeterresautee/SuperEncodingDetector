@@ -15,7 +15,7 @@ import com.taj.unicode_detector.FinalFullCheckResult
  * @param fileName the name of the test file.
  * @param encoding Encoding type of the file.
  */
-case class testFileContainer(fileName: String, encoding: FileEncoding, asciiContent:Boolean, workingActorsNeeded:Int)
+case class testFileContainer(fileName: String, encoding: FileEncoding, asciiContent: Boolean, workingActorsNeeded: Int)
 
 /**
  * Test the detection algorithm with each kind of file.
@@ -23,11 +23,11 @@ case class testFileContainer(fileName: String, encoding: FileEncoding, asciiCont
 class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with WordSpecLike with MustMatchers with BeforeAndAfterAll {
   val testFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}encoded_files${File.separator}"
 
-  val utf8_with_BOM     = testFileContainer("utf8_with_BOM.txt", BOM.UTF8, asciiContent = false, 1)
-  val utf8_without_BOM  = testFileContainer("utf8_without_BOM.txt", BOM.ASCII, asciiContent = false, 1)
-  val UTF16_BE          = testFileContainer("UTF16_BE.txt", BOM.UTF16BE, asciiContent = false, 1)
-  val UTF16_LE          = testFileContainer("UTF16_LE.txt", BOM.UTF16LE, asciiContent = false, 1)
-  val ASCII             = testFileContainer("ascii.txt", BOM.ASCII, asciiContent = true, 1)
+  val utf8_with_BOM = testFileContainer("utf8_with_BOM.txt", BOM.UTF8, asciiContent = false, 1)
+  val utf8_without_BOM = testFileContainer("utf8_without_BOM.txt", BOM.ASCII, asciiContent = false, 1)
+  val UTF16_BE = testFileContainer("UTF16_BE.txt", BOM.UTF16BE, asciiContent = false, 1)
+  val UTF16_LE = testFileContainer("UTF16_LE.txt", BOM.UTF16LE, asciiContent = false, 1)
+  val ASCII = testFileContainer("ascii.txt", BOM.ASCII, asciiContent = true, 1)
 
   var bytesToRead = 0L
   var workerCount = 0
