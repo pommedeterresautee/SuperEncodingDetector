@@ -13,9 +13,9 @@ import com.taj.unicode_detector.FinalFullCheckResult
 /**
  * A case class to contain the parameters of a test file.
  * @param fileName the name of the test file.
- * @param isASCII a boolean to say if it's a ASCII file.
+ * @param encoding Encoding type of the file.
  */
-case class testFileContainer(fileName: String, isASCII: Boolean)
+case class testFileContainer(fileName: String, encoding: FileEncoding, asciiContent:Boolean, workingActorsNeeded:Int)
 
 /**
  * Test the detection algorithm with each kind of file.
@@ -23,11 +23,11 @@ case class testFileContainer(fileName: String, isASCII: Boolean)
 class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with WordSpecLike with MustMatchers with BeforeAndAfterAll {
   val testFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}encoded_files${File.separator}"
 
-  val utf8_with_BOM = testFileContainer("utf8_with_BOM.txt", isASCII = false)
-  val utf8_without_BOM = testFileContainer("utf8_without_BOM.txt", isASCII = false)
-  val UTF16_BE = testFileContainer("UTF16_BE.txt", isASCII = false)
-  val UTF16_LE = testFileContainer("UTF16_LE.txt", isASCII = false)
-  val ASCII = testFileContainer("ascii.txt", isASCII = true)
+  val utf8_with_BOM     = testFileContainer("utf8_with_BOM.txt", BOM.UTF8, asciiContent = false, 1)
+  val utf8_without_BOM  = testFileContainer("utf8_without_BOM.txt", BOM.ASCII, asciiContent = false, 1)
+  val UTF16_BE          = testFileContainer("UTF16_BE.txt", BOM.UTF16BE, asciiContent = false, 1)
+  val UTF16_LE          = testFileContainer("UTF16_LE.txt", BOM.UTF16LE, asciiContent = false, 1)
+  val ASCII             = testFileContainer("ascii.txt", BOM.ASCII, asciiContent = true, 1)
 
   var bytesToRead = 0L
   var workerCount = 0
@@ -44,22 +44,26 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
     fileToTest =>
       s"${fileToTest.fileName} file" must {
         "have a correct evaluation of workers quantity needed" in {
-          println(utf8_with_BOM)
           bytesToRead = new File(testFolder, fileToTest.fileName).length()
           workerCount = (1 to Runtime.getRuntime.availableProcessors)
             .find(_ * ParamAkka.bufferSize >= bytesToRead)
             .getOrElse(Runtime.getRuntime.availableProcessors)
           //The block test
-          workerCount must equal(1)
+          workerCount must equal(fileToTest.workingActorsNeeded)
         }
 
-        s"be detected as${if (!fileToTest.isASCII) " non" else ""} ASCII" in {
+        s"be detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
           val testActor = TestProbe()
           val worker = TestActorRef(new FileAnalyzer(testActor.ref, workerCount, bytesToRead))
           worker ! AnalyzeFile(testFolder + fileToTest.fileName)
           val resultToTest = testActor.receiveOne(40 seconds).asInstanceOf[FinalFullCheckResult]
           //The block test
-          resultToTest.isASCII must be(fileToTest.isASCII)
+          resultToTest.isASCII must be(fileToTest.asciiContent)
+        }
+
+        s"be detected as ${fileToTest.encoding.name} based on its BOM" in {
+          val detection = BOM.detect(testFolder + fileToTest.fileName)
+          detection must equal(fileToTest.encoding)
         }
       }
   }
