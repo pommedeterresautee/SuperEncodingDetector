@@ -1,6 +1,7 @@
 package com.taj.unicode_detector
 
-import java.io.FileInputStream
+import java.io.{FileOutputStream, FileInputStream}
+import java.nio.file.{Paths, Path, Files}
 
 /**
  * Contain property of each BOM.
@@ -8,30 +9,29 @@ import java.io.FileInputStream
  * @param BOM List of values of the first bytes when file is not an XML.
  * @param BOM_XML List of values of the first bytes when file is an XML.
  */
-case class FileEncoding(name: String, BOM: List[Int], BOM_XML: List[Int])
+case class BOMFileEncoding(name: String, BOM: List[Int], BOM_XML: List[Int])
 
 /**
  * Main class to detect a file encoding based on its BOM.
  */
 object BOM {
-  val bigUCS4 = FileEncoding("UCS-4", List(0x00, 0x00, 0xFE, 0xFF), List(0x00, 0x00, 0x00, '<'))
-  val littleUCS4 = FileEncoding("UCS-4", List(0xFF, 0xFE, 0x00, 0x00), List('<', 0x00, 0x00, 0x00))
-  val unusualUCS4 = FileEncoding("UCS-4", List(0x00, 0x00, 0xFF, 0xFE), List(0x00, 0x00, '<', 0x00))
-  val unusualUCS4_bis = FileEncoding("UCS-4", List(0xFE, 0xFF, 0x00, 0x00), List(0x00, '<', 0x00, 0x00))
-  val UTF16BE = FileEncoding("UTF-16BE", List(0xFE, 0xFF), List(0x00, '<', 0x00, '?'))
-  val UTF16LE = FileEncoding("UTF-16LE", List(0xFF, 0xFE), List('<', 0x00, '?', 0x00))
-  val UTF8 = FileEncoding("UTF-8", List(0xEF, 0xBB, 0xBF), List(0x4C, 0x6F, 0xA7, 0x94))
-  //val UTF8_WITHOUT_BOM  = BOM("UTF-8", List(), List('<' , '?' , 'x' , 'm' ))
-  val ASCII = FileEncoding("ASCII", List(), List('<', '?', 'x', 'm'))
+  val bigUCS4 = BOMFileEncoding("UCS-4", List(0x00, 0x00, 0xFE, 0xFF), List(0x00, 0x00, 0x00, '<'))
+  val littleUCS4 = BOMFileEncoding("UCS-4", List(0xFF, 0xFE, 0x00, 0x00), List('<', 0x00, 0x00, 0x00))
+  val unusualUCS4 = BOMFileEncoding("UCS-4", List(0x00, 0x00, 0xFF, 0xFE), List(0x00, 0x00, '<', 0x00))
+  val unusualUCS4_bis = BOMFileEncoding("UCS-4", List(0xFE, 0xFF, 0x00, 0x00), List(0x00, '<', 0x00, 0x00))
+  val UTF16BE = BOMFileEncoding("UTF-16BE", List(0xFE, 0xFF), List(0x00, '<', 0x00, '?'))
+  val UTF16LE = BOMFileEncoding("UTF-16LE", List(0xFF, 0xFE), List('<', 0x00, '?', 0x00))
+  val UTF8 = BOMFileEncoding("UTF-8", List(0xEF, 0xBB, 0xBF), List(0x4C, 0x6F, 0xA7, 0x94))
+  val ASCII = BOMFileEncoding("ASCII", List(), List('<', '?', 'x', 'm'))
 
   /**
    * Detects the encoding of a file based on its BOM.
    * @param file path to the file.
    * @return the encoding. If no BOM detected, send back ASCII encoding.
    */
-  def detect(file: String): FileEncoding = {
+  def detect(file: String): BOMFileEncoding = {
     val in = new FileInputStream(file)
-    var ret: FileEncoding = null
+    var ret: BOMFileEncoding = null
     val bytesToRead = 1024 // enough to read most XML encoding declarations
 
     // This may fail if there are a lot of space characters before the end
@@ -50,5 +50,58 @@ object BOM {
       case _                                                  => ASCII
     }
     ret
+  }
+
+  /**
+   * Compare files given in parameter to the BOM in parameters to determine if they are all the same.
+   * @param verbose print some helpful messages.
+   * @param bom the supposed BOM
+   * @param paths paths to the files to compare.
+   * @return true if the encoding is the same everywhere.
+   */
+  def isSameBOM(verbose:Boolean, bom:BOMFileEncoding, paths:String*):Boolean = {
+    if (paths.size < 2) throw new IllegalArgumentException(s"Not enough files to compare (${paths.size})")
+    paths.forall{path:String =>
+      val detectedBOM = detect(path)
+      val same = bom.equals(detectedBOM)
+      if(!same && verbose) println(s"The first file [${paths(0)}] is encoded as ${bom.name} but the file [$path] is encoded as ${detectedBOM.name}.")
+      same
+    }
+  }
+
+  private def removeBOM(verbose:Boolean, bom:BOMFileEncoding, path:String):FileInputStream = {
+    val toDrop = bom.BOM.size
+    val f = new FileInputStream(path)
+    val realSkipped = f.skip(toDrop)
+    if(toDrop != realSkipped) throw new IllegalStateException(s"Failed to skip the correct number of bytes ($realSkipped instead of $toDrop)")
+    f
+  }
+
+  def copyWithoutBom(from:String, to:String, verbose:Boolean) {
+    val bomFrom = detect(from)
+    val output = new FileOutputStream(to)
+    val input = removeBOM(verbose, bomFrom, from)
+    val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+    Iterator
+      .continually (input.read(bytes))
+      .takeWhile (-1 !=)
+      .foreach (read => output.write(bytes,0,read))
+    output.close()
+    input.close()
+  }
+
+  def mergeFilesWithoutBom(verbose:Boolean, destination:String, paths:String*) {
+    Files.copy(Paths.get(paths(0)), Paths.get(destination))
+    val bytes = new Array[Byte](1024)
+    val output = new FileOutputStream(destination, true)
+    paths.drop(1).foreach{path =>
+      val input = removeBOM(verbose, detect(path), path)
+      Iterator
+        .continually (input.read(bytes))
+        .takeWhile (-1 !=)
+        .foreach (read => output.write(bytes,0,read))
+      input.close()
+    }
+    output.close()
   }
 }

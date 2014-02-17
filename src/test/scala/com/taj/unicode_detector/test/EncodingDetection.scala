@@ -15,7 +15,7 @@ import com.taj.unicode_detector.FinalFullCheckResult
  * @param fileName the name of the test file.
  * @param encoding Encoding type of the file.
  */
-case class testFileContainer(fileName: String, encoding: FileEncoding, asciiContent: Boolean, workingActorsNeeded: Int)
+case class testFileContainer(fileName: String, encoding: BOMFileEncoding, asciiContent: Boolean, workingActorsNeeded: Int)
 
 /**
  * Test the detection algorithm with each kind of file.
