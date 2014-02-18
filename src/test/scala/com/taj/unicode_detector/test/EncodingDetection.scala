@@ -28,6 +28,10 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
   val UTF16_BE = testFileContainer("UTF16_BE.txt", BOM.UTF16BE, asciiContent = false, 1)
   val UTF16_LE = testFileContainer("UTF16_LE.txt", BOM.UTF16LE, asciiContent = false, 1)
   val ASCII = testFileContainer("ascii.txt", BOM.ASCII, asciiContent = true, 1)
+  val utf8_with_BOM_bis = testFileContainer("utf8_with_BOM_bis.txt", BOM.UTF8, asciiContent = false, 1)
+  val utf8_without_BOM_bis = testFileContainer("utf8_without_BOM_bis.txt", BOM.ASCII, asciiContent = true, 1)
+  val UTF16_BE_bis = testFileContainer("UTF16_BE_bis.txt", BOM.UTF16BE, asciiContent = false, 1)
+  val UTF16_LE_bis = testFileContainer("UTF16_LE_bis.txt", BOM.UTF16LE, asciiContent = false, 1)
 
   var bytesToRead = 0L
   var workerCount = 0
@@ -39,7 +43,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
     system.shutdown()
   }
 
-  Seq(utf8_with_BOM, utf8_without_BOM, UTF16_BE, UTF16_LE, ASCII)
+  Seq(utf8_with_BOM, utf8_without_BOM, UTF16_BE, UTF16_LE, ASCII, utf8_with_BOM_bis, utf8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis)
     .foreach {
     fileToTest =>
       s"${fileToTest.fileName} file" must {
@@ -67,7 +71,24 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
       }
   }
-}
 
+  Seq((utf8_with_BOM, utf8_with_BOM_bis), (utf8_without_BOM, utf8_without_BOM_bis), (UTF16_BE, UTF16_BE_bis), (UTF16_LE, UTF16_LE_bis)).foreach{case (file1, file2) =>
+    s"${file1.fileName} and ${file2.fileName}" must {
+      "have the same detected BOM" in {
+        val same = BOM.isSameBOM(true, file1.encoding, testFolder + file1.fileName, testFolder + file2.fileName)
+        same must be(true)
+      }
+    }
+  }
+
+  Seq((utf8_with_BOM, utf8_without_BOM), (UTF16_BE, utf8_with_BOM), (utf8_with_BOM, UTF16_LE), (UTF16_BE, UTF16_LE)).foreach{case (file1, file2) =>
+    s"${file1.fileName} and ${file2.fileName}" must {
+      "have different detected BOM" in {
+        val same = BOM.isSameBOM(true, file1.encoding, testFolder + file1.fileName, testFolder + file2.fileName)
+        same must be(false)
+      }
+    }
+  }
+}
 
 
