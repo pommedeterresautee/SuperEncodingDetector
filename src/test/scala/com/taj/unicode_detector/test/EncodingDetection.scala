@@ -64,7 +64,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
   val ASCII = testFileProperties("ascii.txt", BOM.ASCII, asciiContent = true, 1)
   // Second serie of files with BOM for comparison purpose
   val utf8_with_BOM_bis = testFileProperties("utf8_with_BOM_bis.txt", BOM.UTF8, asciiContent = false, 1)
-  val utf8_without_BOM_bis = testFileProperties("utf8_without_BOM_bis.txt", BOM.ASCII, asciiContent = true, 1)
+  val utf8_without_BOM_bis = testFileProperties("utf8_without_BOM_bis.txt", BOM.ASCII, asciiContent = false, 1)
   val UTF16_BE_bis = testFileProperties("UTF16_BE_bis.txt", BOM.UTF16BE, asciiContent = false, 1)
   val UTF16_LE_bis = testFileProperties("UTF16_LE_bis.txt", BOM.UTF16LE, asciiContent = false, 1)
   // Files with BOM manually cleaned
@@ -203,7 +203,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
       }
   }
 
-  Seq(utf8_with_BOM, UTF16_BE, UTF16_LE).foreach {
+  Seq(utf8_with_BOM, UTF16_BE, UTF16_LE, utf8_with_BOM_bis, utf8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis).foreach {
     file =>
       val fileToConvert = encodedFileFolder + file.fileName
       val convertedFile = tempFilesFolder + "converted_" + file.fileName

@@ -46,10 +46,12 @@ object Converter {
   def convert(sourceIS: InputStream, destinationPath: String, encodingSource: Charset, encodingDestination: Charset, transformation: String => String) {
     val content = Source.fromInputStream(sourceIS, encodingSource.name())
     val output = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(destinationPath), encodingDestination.name()))
-    try content
-      .getLines()
-      .map(transformation)
-      .foreach(output.write)
+    try {
+      val buffer = content.getLines()
+      buffer
+        .map(lineOfText => transformation(lineOfText) + (if (buffer.hasNext) "\n" else ""))
+        .foreach(output.write)
+    }
     finally {
       content.close()
       output.close()

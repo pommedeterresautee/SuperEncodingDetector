@@ -112,7 +112,7 @@ object BOM {
     val toDrop = bom.BOM.size
     val f = new FileInputStream(path)
     val realSkipped = f.skip(toDrop)
-    if (toDrop != realSkipped) throw new IllegalStateException(s"Failed to skip the correct number of bytes ($realSkipped instead of $toDrop)")
+    if (toDrop != realSkipped) throw new IllegalStateException(s"Failed to skip the correct number of bytes for the file $path ($realSkipped instead of $toDrop)")
     f
   }
 
