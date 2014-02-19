@@ -77,6 +77,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
 
   /**
    * Stops all actors when tests are finished.
+   * Delete all temp files.
    */
   override def afterAll(): Unit = {
     system.shutdown()
@@ -190,8 +191,6 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
       }
   }
-
-
 }
 
 

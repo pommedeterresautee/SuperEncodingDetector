@@ -133,4 +133,4 @@ out
 FEC_EXAMPLE
 
 #temp files generated for tests
-src/test/resources/temp/*
+src/test/resources/temp/*.txt
