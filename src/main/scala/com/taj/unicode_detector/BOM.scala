@@ -100,6 +100,13 @@ object BOM {
     }
   }
 
+  /**
+   * Remove the bytes relative to the detected BOM of an existing text file.
+   * @param verbose true if want to see the progress of the process.
+   * @param bom the BOM to remove to the file.
+   * @param path the path to the file to the file.
+   * @return
+   */
   private def removeBOM(verbose: Boolean, bom: BOMFileEncoding, path: String): FileInputStream = {
     val toDrop = bom.BOM.size
     val f = new FileInputStream(path)
@@ -108,6 +115,12 @@ object BOM {
     f
   }
 
+  /**
+   * Copy a file to another place without its BOM.
+   * @param from path to the source.
+   * @param to path to the destination.
+   * @param verbose true to see more information about the process ongoing.
+   */
   def copyWithoutBom(from: String, to: String, verbose: Boolean) {
     val bomFrom = detect(from)
     val fileTo = new File(to)
@@ -129,19 +142,24 @@ object BOM {
     }
   }
 
+  /**
+   * Merge several text files together even if they have a BOM.
+   * @param verbose true to display the process ongoing.
+   * @param destination path where to save the merged file.
+   * @param paths paths to the files to merge together.
+   */
   def mergeFilesWithoutBom(verbose: Boolean, destination: String, paths: String*) {
     Files.copy(Paths.get(paths(0)), Paths.get(destination))
     val bytes = new Array[Byte](1024)
     val output = new FileOutputStream(destination, true)
-    paths.drop(1).foreach {
+    try paths.drop(1).foreach {
       path =>
         val input = removeBOM(verbose, detect(path), path)
-        Iterator
+        try Iterator
           .continually(input.read(bytes))
           .takeWhile(-1 !=)
-          .foreach(read => output.write(bytes, 0, read))
-        input.close()
-    }
-    output.close()
+          .foreach(read => try output.write(bytes, 0, read))
+        finally input.close()
+    } finally output.close()
   }
 }

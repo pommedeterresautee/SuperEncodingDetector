@@ -46,7 +46,7 @@ import org.apache.commons.codec.digest.DigestUtils
  * @param fileName the name of the test file.
  * @param encoding Encoding type of the file.
  */
-case class testFileContainer(fileName: String, encoding: BOMFileEncoding, asciiContent: Boolean, workingActorsNeeded: Int)
+case class testFileProperties(fileName: String, encoding: BOMFileEncoding, asciiContent: Boolean, workingActorsNeeded: Int)
 
 /**
  * Test the detection algorithm with each kind of file.
@@ -54,23 +54,23 @@ case class testFileContainer(fileName: String, encoding: BOMFileEncoding, asciiC
 class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll {
   val testResourcesFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}"
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
-  val testFilesFolder = testResourcesFolder + s"temp${File.separator}"
+  val tempFilesFolder = testResourcesFolder + s"temp${File.separator}"
 
   // First serie of text files with or without BOM
-  val utf8_with_BOM = testFileContainer("utf8_with_BOM.txt", BOM.UTF8, asciiContent = false, 1)
-  val utf8_without_BOM = testFileContainer("utf8_without_BOM.txt", BOM.ASCII, asciiContent = false, 1)
-  val UTF16_BE = testFileContainer("UTF16_BE.txt", BOM.UTF16BE, asciiContent = false, 1)
-  val UTF16_LE = testFileContainer("UTF16_LE.txt", BOM.UTF16LE, asciiContent = false, 1)
-  val ASCII = testFileContainer("ascii.txt", BOM.ASCII, asciiContent = true, 1)
+  val utf8_with_BOM = testFileProperties("utf8_with_BOM.txt", BOM.UTF8, asciiContent = false, 1)
+  val utf8_without_BOM = testFileProperties("utf8_without_BOM.txt", BOM.ASCII, asciiContent = false, 1)
+  val UTF16_BE = testFileProperties("UTF16_BE.txt", BOM.UTF16BE, asciiContent = false, 1)
+  val UTF16_LE = testFileProperties("UTF16_LE.txt", BOM.UTF16LE, asciiContent = false, 1)
+  val ASCII = testFileProperties("ascii.txt", BOM.ASCII, asciiContent = true, 1)
   // Second serie of files with BOM for comparison purpose
-  val utf8_with_BOM_bis = testFileContainer("utf8_with_BOM_bis.txt", BOM.UTF8, asciiContent = false, 1)
-  val utf8_without_BOM_bis = testFileContainer("utf8_without_BOM_bis.txt", BOM.ASCII, asciiContent = true, 1)
-  val UTF16_BE_bis = testFileContainer("UTF16_BE_bis.txt", BOM.UTF16BE, asciiContent = false, 1)
-  val UTF16_LE_bis = testFileContainer("UTF16_LE_bis.txt", BOM.UTF16LE, asciiContent = false, 1)
+  val utf8_with_BOM_bis = testFileProperties("utf8_with_BOM_bis.txt", BOM.UTF8, asciiContent = false, 1)
+  val utf8_without_BOM_bis = testFileProperties("utf8_without_BOM_bis.txt", BOM.ASCII, asciiContent = true, 1)
+  val UTF16_BE_bis = testFileProperties("UTF16_BE_bis.txt", BOM.UTF16BE, asciiContent = false, 1)
+  val UTF16_LE_bis = testFileProperties("UTF16_LE_bis.txt", BOM.UTF16LE, asciiContent = false, 1)
   // Files with BOM manually cleaned
-  val utf8_with_BOM_manually_cleaned = testFileContainer("utf8_with_BOM_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
-  val UTF16_BE_manually_cleaned = testFileContainer("UTF16_BE_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
-  val UTF16_LE_manually_cleaned = testFileContainer("UTF16_LE_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
+  val utf8_with_BOM_manually_cleaned = testFileProperties("utf8_with_BOM_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
+  val UTF16_BE_manually_cleaned = testFileProperties("UTF16_BE_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
+  val UTF16_LE_manually_cleaned = testFileProperties("UTF16_LE_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
 
   var bytesToRead = 0L
   var workerCount = 0
@@ -81,11 +81,10 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
    */
   override def afterAll(): Unit = {
     system.shutdown()
-    new File(testFilesFolder).listFiles().foreach(_.delete())
   }
 
   override def beforeAll() {
-    new File(testFilesFolder).listFiles().foreach(_.delete())
+    new File(tempFilesFolder).listFiles().foreach(_.delete())
   }
 
   Seq(utf8_with_BOM, utf8_without_BOM, UTF16_BE, UTF16_LE, ASCII, utf8_with_BOM_bis, utf8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis, utf8_with_BOM_manually_cleaned, UTF16_BE_manually_cleaned, UTF16_LE_manually_cleaned)
@@ -118,11 +117,24 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
   }
 
   Seq((utf8_with_BOM, utf8_with_BOM_bis), (utf8_without_BOM, utf8_without_BOM_bis), (UTF16_BE, UTF16_BE_bis), (UTF16_LE, UTF16_LE_bis)).foreach {
-    case (file1, file2) =>
-      s"${file1.fileName} and ${file2.fileName}" must {
+    case (first, second) =>
+      val firstPath = encodedFileFolder + first.fileName
+      val firstFile = new File(firstPath)
+      val secondPath = encodedFileFolder + second.fileName
+      val secondFile = new File(secondPath)
+      val tempPath = s"${tempFilesFolder}merged_${first.fileName}_${second.fileName}"
+      val tempFile = new File(tempPath)
+
+      s"${first.fileName} and ${second.fileName}" must {
         "have the same detected BOM" in {
-          val same = BOM.isSameBOM(true, file1.encoding, encodedFileFolder + file1.fileName, encodedFileFolder + file2.fileName)
+          val same = BOM.isSameBOM(true, first.encoding, firstPath, secondPath)
           same should be(true)
+        }
+
+        s"Merge files ${first.fileName} and ${second.fileName} together" in {
+          BOM.mergeFilesWithoutBom(true, tempPath, firstPath, secondPath)
+          tempFile should be('exists)
+          tempFile.length() should equal(firstFile.length() + secondFile.length() - first.encoding.BOM.size)
         }
       }
   }
@@ -142,51 +154,51 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
       s"The BOM of the file ${source.fileName} will be removed and " must {
         val sourcePath = encodedFileFolder + source.fileName
         val manuallyCleanedPath = encodedFileFolder + manuallyCleaned.fileName
-        val testFilePath = testFilesFolder + s"test_${source.encoding.name}.txt"
+        val tempFilePath = tempFilesFolder + s"temp_${source.encoding.name}.txt"
         val sourceFile = new File(sourcePath)
-        val testFile = new File(testFilePath)
+        val tempFile = new File(tempFilePath)
         val manuallyCleanedFile = new File(manuallyCleanedPath)
 
         "the test file should be deleted before the test if it exists" in {
-          if (testFile.exists()) {
-            testFile.delete()
-            testFile should not be 'exists
+          if (tempFile.exists()) {
+            tempFile.delete()
+            tempFile should not be 'exists
           }
         }
 
         "the file must be detected as ASCII" in {
-          BOM.copyWithoutBom(sourcePath, testFilePath, verbose = true)
-          testFile should be('exists)
-          BOM.detect(testFile.getAbsolutePath).name should be(unicode_detector.BOM.ASCII.name)
+          BOM.copyWithoutBom(sourcePath, tempFilePath, verbose = true)
+          tempFile should be('exists)
+          BOM.detect(tempFile.getAbsolutePath).name should be(unicode_detector.BOM.ASCII.name)
         }
 
-        s"the size of ${testFile.getName} should be equal to the size of ${manuallyCleaned.fileName}" in {
-          testFile.length() should be(manuallyCleanedFile.length)
+        s"the size of ${tempFile.getName} should be equal to the size of ${manuallyCleaned.fileName}" in {
+          tempFile.length() should be(manuallyCleanedFile.length)
         }
 
-        s"the size of ${testFile.getName} should be equal to the size of ${source.fileName} minus the size of its BOM" in {
+        s"the size of ${tempFile.getName} should be equal to the size of ${source.fileName} minus the size of its BOM" in {
           sourceFile.length() should be > 0l
-          testFile should be('exists)
-          testFile.length() should be > 0l
-          (sourceFile.length() - testFile.length()) should equal(source.encoding.BOM.size.toLong)
+          tempFile should be('exists)
+          tempFile.length() should be > 0l
+          (sourceFile.length() - tempFile.length()) should equal(source.encoding.BOM.size.toLong)
         }
 
-        s"the md5 of ${testFile.getName} should be equal to the md5 of ${source.fileName}" in {
-          testFile should be('exists)
-          val is1 = new FileInputStream(testFile)
+        s"the md5 of ${tempFile.getName} should be equal to the md5 of ${source.fileName}" in {
+          tempFile should be('exists)
+          val is1 = new FileInputStream(tempFile)
           val is2 = new FileInputStream(manuallyCleanedFile)
           DigestUtils.md5Hex(is1) should equal(DigestUtils.md5Hex(is2))
           is1.close()
           is2.close()
         }
 
-        "the test file should be deleted after the test" in {
-          val channel = new RandomAccessFile(testFile, "rw").getChannel()
+        "the temp file should be deleted after the test" in {
+          val channel = new RandomAccessFile(tempFile, "rw").getChannel()
           val lock = channel.tryLock()
           lock should not be null
           lock.release()
           channel.close()
-          testFile should (be('delete) and not be 'exists)
+          tempFile should (be('delete) and not be 'exists)
         }
       }
   }
