@@ -30,7 +30,7 @@
 package com.taj.unicode_detector.test
 
 import org.scalatest._
-import java.io.{RandomAccessFile, File}
+import java.io.{FileInputStream, RandomAccessFile, File}
 import akka.actor.ActorSystem
 import com.taj.unicode_detector._
 import akka.testkit.{TestProbe, ImplicitSender, TestKit, TestActorRef}
@@ -39,6 +39,7 @@ import scala.concurrent.duration._
 import com.taj.unicode_detector.AnalyzeFile
 import com.taj.unicode_detector.FinalFullCheckResult
 import com.taj.unicode_detector
+import org.apache.commons.codec.digest.DigestUtils
 
 /**
  * A case class to contain the parameters of a test file.
@@ -55,16 +56,21 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
   val testFilesFolder = testResourcesFolder + s"temp${File.separator}"
 
-
+  // First serie of text files with or without BOM
   val utf8_with_BOM = testFileContainer("utf8_with_BOM.txt", BOM.UTF8, asciiContent = false, 1)
   val utf8_without_BOM = testFileContainer("utf8_without_BOM.txt", BOM.ASCII, asciiContent = false, 1)
   val UTF16_BE = testFileContainer("UTF16_BE.txt", BOM.UTF16BE, asciiContent = false, 1)
   val UTF16_LE = testFileContainer("UTF16_LE.txt", BOM.UTF16LE, asciiContent = false, 1)
   val ASCII = testFileContainer("ascii.txt", BOM.ASCII, asciiContent = true, 1)
+  // Second serie of files with BOM for comparison purpose
   val utf8_with_BOM_bis = testFileContainer("utf8_with_BOM_bis.txt", BOM.UTF8, asciiContent = false, 1)
   val utf8_without_BOM_bis = testFileContainer("utf8_without_BOM_bis.txt", BOM.ASCII, asciiContent = true, 1)
   val UTF16_BE_bis = testFileContainer("UTF16_BE_bis.txt", BOM.UTF16BE, asciiContent = false, 1)
   val UTF16_LE_bis = testFileContainer("UTF16_LE_bis.txt", BOM.UTF16LE, asciiContent = false, 1)
+  // Files with BOM manually cleaned
+  val utf8_with_BOM_manually_cleaned = testFileContainer("utf8_with_BOM_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
+  val UTF16_BE_manually_cleaned = testFileContainer("UTF16_BE_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
+  val UTF16_LE_manually_cleaned = testFileContainer("UTF16_LE_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
 
   var bytesToRead = 0L
   var workerCount = 0
@@ -81,14 +87,14 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
     new File(testFilesFolder).listFiles().foreach(_.delete())
   }
 
-  Seq(utf8_with_BOM, utf8_without_BOM, UTF16_BE, UTF16_LE, ASCII, utf8_with_BOM_bis, utf8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis)
+  Seq(utf8_with_BOM, utf8_without_BOM, UTF16_BE, UTF16_LE, ASCII, utf8_with_BOM_bis, utf8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis, utf8_with_BOM_manually_cleaned, UTF16_BE_manually_cleaned, UTF16_LE_manually_cleaned)
     .foreach {
     fileToTest =>
       s"${fileToTest.fileName} file" must {
         "has a correct evaluation of workers quantity needed" in {
           bytesToRead = new File(encodedFileFolder, fileToTest.fileName).length()
           workerCount = (1 to Runtime.getRuntime.availableProcessors)
-            .find(_ * ParamAkka.bufferSize >= bytesToRead)
+            .find(_ * ParamAKKA.bufferSize >= bytesToRead)
             .getOrElse(Runtime.getRuntime.availableProcessors)
           //The block test
           workerCount should equal(fileToTest.workingActorsNeeded)
@@ -130,12 +136,15 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
       }
   }
 
-  Seq(utf8_with_BOM, UTF16_BE, UTF16_LE, ASCII).foreach {
-    file =>
-      s"The BOM of the file ${file.fileName} will be removed and " must {
-        val sourceFile = encodedFileFolder + file.fileName
-        val destination = testFilesFolder + s"test_${file.encoding.name}.txt"
-        val testFile = new File(destination)
+  Seq((utf8_with_BOM, utf8_with_BOM_manually_cleaned), (UTF16_BE, UTF16_BE_manually_cleaned), (UTF16_LE, UTF16_LE_manually_cleaned), (ASCII, ASCII)).foreach {
+    case (source, manuallyCleaned) =>
+      s"The BOM of the file ${source.fileName} will be removed and " must {
+        val sourcePath = encodedFileFolder + source.fileName
+        val manuallyCleanedPath = encodedFileFolder + manuallyCleaned.fileName
+        val testFilePath = testFilesFolder + s"test_${source.encoding.name}.txt"
+        val sourceFile = new File(sourcePath)
+        val testFile = new File(testFilePath)
+        val manuallyCleanedFile = new File(manuallyCleanedPath)
 
         "the test file should be deleted before the test if it exists" in {
           if (testFile.exists()) {
@@ -146,15 +155,30 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         "the file must be detected as ASCII" in {
-          BOM.copyWithoutBom(sourceFile, destination, true)
+          BOM.copyWithoutBom(sourcePath, testFilePath, verbose = true)
+          testFile should be('exists)
           BOM.detect(testFile.getAbsolutePath).name should be(unicode_detector.BOM.ASCII.name)
         }
 
-        //tester la taille du fichier
+        s"the size of ${testFile.getName} should be equal to the size of ${manuallyCleaned.fileName}" in {
+          testFile.length() should be(manuallyCleanedFile.length)
+        }
 
-        //tester le checksum des fichiers avec les manually cleaned
+        s"the size of ${testFile.getName} should be equal to the size of ${source.fileName} minus the size of its BOM" in {
+          sourceFile.length() should be > 0l
+          testFile should be('exists)
+          testFile.length() should be > 0l
+          (sourceFile.length() - testFile.length()) should equal(source.encoding.BOM.size.toLong)
+        }
 
-        //tester le contenu du fichier
+        s"the md5 of ${testFile.getName} should be equal to the md5 of ${source.fileName}" in {
+          testFile should be('exists)
+          val is1 = new FileInputStream(testFile)
+          val is2 = new FileInputStream(manuallyCleanedFile)
+          DigestUtils.md5Hex(is1) should equal(DigestUtils.md5Hex(is2))
+          is1.close()
+          is2.close()
+        }
 
         "the test file should be deleted after the test" in {
           val channel = new RandomAccessFile(testFile, "rw").getChannel()
@@ -166,6 +190,8 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
       }
   }
+
+
 }
 
 

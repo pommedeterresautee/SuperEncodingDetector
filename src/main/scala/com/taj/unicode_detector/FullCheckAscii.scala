@@ -35,17 +35,17 @@ import akka.actor._
 import akka.routing.RoundRobinRouter
 
 
-sealed trait AkkaMessage
+sealed trait MessageAKKA
 
-case class AnalyzeFile(path: String) extends AkkaMessage
+case class AnalyzeFile(path: String) extends MessageAKKA
 
-case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int) extends AkkaMessage
+case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int) extends MessageAKKA
 
-case class Result(value: Boolean) extends AkkaMessage
+case class Result(value: Boolean) extends MessageAKKA
 
-case class FinalFullCheckResult(isASCII: Boolean, timeElapsed: Long) extends AkkaMessage
+case class FinalFullCheckResult(isASCII: Boolean, timeElapsed: Long) extends MessageAKKA
 
-object ParamAkka {
+object ParamAKKA {
   val bufferSize: Int = 1024 * 1024 * 10
 }
 
@@ -74,7 +74,7 @@ class FileAnalyzer(logger: ActorRef, nbrOfWorkers: Int, totalLengthToAnalyze: Lo
       if (!new File(path).exists()) throw new IllegalArgumentException(s"Provided file doesn't exist: $path")
       (0 to nbrOfWorkers - 1)
         .foreach(workerNbr =>
-        router ! AnalyzeBlock(path, workerNbr * lengthPerWorkerToAnalyze, lengthPerWorkerToAnalyze, ParamAkka.bufferSize))
+        router ! AnalyzeBlock(path, workerNbr * lengthPerWorkerToAnalyze, lengthPerWorkerToAnalyze, ParamAKKA.bufferSize))
     case Result(isBlockASCII) =>
       resultReceived += 1
       resultOfAnalyze &= isBlockASCII

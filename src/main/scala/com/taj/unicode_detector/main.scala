@@ -42,7 +42,7 @@ object main extends App {
 
   // Determine the minimum of Workers depending of the size of the file and the size of the buffer.
   // If we are working on a small file, start less workers, if it s a big file, use the number of cores.
-  val workerCount = (1 to Runtime.getRuntime.availableProcessors).find(_ * ParamAkka.bufferSize >= bytesToRead).getOrElse(Runtime.getRuntime.availableProcessors)
+  val workerCount = (1 to Runtime.getRuntime.availableProcessors).find(_ * ParamAKKA.bufferSize >= bytesToRead).getOrElse(Runtime.getRuntime.availableProcessors)
 
   val system = ActorSystem("AsciiDetector")
 
