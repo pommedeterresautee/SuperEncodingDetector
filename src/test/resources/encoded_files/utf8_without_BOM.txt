@@ -1,1 +1,1 @@
-Pas de BOM mais deux charctéres spéciaux.
+Pas de BOM mais deux charactères spéciaux.
