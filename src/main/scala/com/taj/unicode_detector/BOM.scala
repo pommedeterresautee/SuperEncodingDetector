@@ -35,11 +35,11 @@ import java.nio.charset.{Charset, StandardCharsets}
 
 /**
  * Contain property of each BOM.
- * @param charset Encoding type.
+ * @param charsetUsed Encoding type.
  * @param BOM List of values of the first bytes when file is not an XML.
  * @param BOM_XML List of values of the first bytes when file is an XML.
  */
-case class BOMFileEncoding(charset: Charset, BOM: List[Int], BOM_XML: List[Int])
+case class BOMFileEncoding(charsetUsed: Charset, BOM: List[Int], BOM_XML: List[Int])
 
 /**
  * Main class to detect a file encoding based on its BOM.
@@ -96,7 +96,7 @@ object BOM {
       path: String =>
         val detectedBOM = detect(path)
         val same = bom.equals(detectedBOM)
-        if (!same && verbose) println(s"The first file [${paths(0)}] is encoded as ${bom.charset} but the file [$path] is encoded as ${detectedBOM.charset}.")
+        if (!same && verbose) println(s"The first file [${paths(0)}] is encoded as ${bom.charsetUsed} but the file [$path] is encoded as ${detectedBOM.charsetUsed}.")
         same
     }
   }
@@ -108,7 +108,7 @@ object BOM {
    * @param path the path to the file to the file.
    * @return
    */
-  private def removeBOM(verbose: Boolean, bom: BOMFileEncoding, path: String): FileInputStream = {
+  def removeBOM(verbose: Boolean, bom: BOMFileEncoding, path: String): FileInputStream = {
     val toDrop = bom.BOM.size
     val f = new FileInputStream(path)
     val realSkipped = f.skip(toDrop)

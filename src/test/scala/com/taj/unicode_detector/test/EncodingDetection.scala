@@ -109,7 +109,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
           resultToTest.isASCII should equal(fileToTest.asciiContent)
         }
 
-        s"is detected as ${fileToTest.encoding.charset} based on its BOM" in {
+        s"is detected as ${fileToTest.encoding.charsetUsed} based on its BOM" in {
           val detection = BOM.detect(encodedFileFolder + fileToTest.fileName)
           detection should equal(fileToTest.encoding)
         }
@@ -154,7 +154,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
       s"The BOM of the file ${source.fileName} will be removed and " must {
         val sourcePath = encodedFileFolder + source.fileName
         val manuallyCleanedPath = encodedFileFolder + manuallyCleaned.fileName
-        val tempFilePath = tempFilesFolder + s"temp_${source.encoding.charset}.txt"
+        val tempFilePath = tempFilesFolder + s"temp_${source.encoding.charsetUsed}.txt"
         val sourceFile = new File(sourcePath)
         val tempFile = new File(tempFilePath)
         val manuallyCleanedFile = new File(manuallyCleanedPath)
@@ -169,7 +169,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         "the file must be detected as ASCII" in {
           BOM.copyWithoutBom(sourcePath, tempFilePath, verbose = true)
           tempFile should be('exists)
-          BOM.detect(tempFile.getAbsolutePath).charset should be(unicode_detector.BOM.ASCII.charset)
+          BOM.detect(tempFile.getAbsolutePath).charsetUsed should be(unicode_detector.BOM.ASCII.charsetUsed)
         }
 
         s"the size of ${tempFile.getName} should be equal to the size of ${manuallyCleaned.fileName}" in {
@@ -200,6 +200,16 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
           channel.close()
           tempFile should (be('delete) and not be 'exists)
         }
+      }
+  }
+
+  Seq(utf8_with_BOM, UTF16_BE, UTF16_LE).foreach {
+    file =>
+      val fileToConvert = encodedFileFolder + file.fileName
+      val convertedFile = tempFilesFolder + "converted_" + file.fileName
+      s"convert the file ${file.fileName} to ASCII" in {
+        Converter.convert2ASCII(fileToConvert, convertedFile, file.encoding, verbose = false)
+        convertedFile.length should be > 0
       }
   }
 }

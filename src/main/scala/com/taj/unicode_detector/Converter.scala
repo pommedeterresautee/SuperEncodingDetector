@@ -30,11 +30,29 @@
 package com.taj.unicode_detector
 
 import java.text.Normalizer
+import java.nio.charset.{StandardCharsets, Charset}
+import scala.io.Source
+import java.io.{InputStream, FileOutputStream, OutputStreamWriter, BufferedWriter}
 
 
-object AsciiConverter {
+object Converter {
+  private val convertAnyStringToASCII: String => String =
+    text => Normalizer
+      .normalize(text, Normalizer.Form.NFD)
+      .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
 
+  def convert2ASCII(sourcePath: String, destinationPath: String, encodingSource: BOMFileEncoding, verbose: Boolean) = convert(BOM.removeBOM(verbose, encodingSource, sourcePath), destinationPath, encodingSource.charsetUsed, encodingDestination = StandardCharsets.US_ASCII, convertAnyStringToASCII)
 
-  private def convertStringToASCII(text: String): String = Normalizer.normalize(text, Normalizer.Form.NFD)
-    .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+  def convert(sourceIS: InputStream, destinationPath: String, encodingSource: Charset, encodingDestination: Charset, transformation: String => String) {
+    val content = Source.fromInputStream(sourceIS, encodingSource.name())
+    val output = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(destinationPath), encodingDestination.name()))
+    try content
+      .getLines()
+      .map(transformation)
+      .foreach(output.write)
+    finally {
+      content.close()
+      output.close()
+    }
+  }
 }
