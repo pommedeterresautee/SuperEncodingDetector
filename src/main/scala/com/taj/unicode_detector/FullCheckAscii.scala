@@ -37,9 +37,9 @@ import akka.routing.RoundRobinRouter
 
 sealed trait MessageAKKA
 
-case class AnalyzeFile(path: String) extends MessageAKKA
+case class AnalyzeFile(path: String, verbose: Boolean) extends MessageAKKA
 
-case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int) extends MessageAKKA
+case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, verbose: Boolean) extends MessageAKKA
 
 case class Result(value: Boolean) extends MessageAKKA
 
@@ -69,12 +69,12 @@ class FileAnalyzer(logger: ActorRef, nbrOfWorkers: Int, totalLengthToAnalyze: Lo
   var resultReceived = 0 // init
 
   def receive = {
-    case AnalyzeFile(path) =>
-      println("Start the processing...")
+    case AnalyzeFile(path, verbose) =>
+      if (verbose) println("Start the processing...")
       if (!new File(path).exists()) throw new IllegalArgumentException(s"Provided file doesn't exist: $path")
       (0 to nbrOfWorkers - 1)
         .foreach(workerNbr =>
-        router ! AnalyzeBlock(path, workerNbr * lengthPerWorkerToAnalyze, lengthPerWorkerToAnalyze, ParamAKKA.bufferSize))
+        router ! AnalyzeBlock(path, workerNbr * lengthPerWorkerToAnalyze, lengthPerWorkerToAnalyze, ParamAKKA.bufferSize, verbose))
     case Result(isBlockASCII) =>
       resultReceived += 1
       resultOfAnalyze &= isBlockASCII
@@ -89,11 +89,11 @@ class FileAnalyzer(logger: ActorRef, nbrOfWorkers: Int, totalLengthToAnalyze: Lo
 private class BlockAnalyzer extends Actor {
 
   def receive = {
-    case AnalyzeBlock(bigDataFilePath, startRead, length, buffer) =>
+    case AnalyzeBlock(bigDataFilePath, startRead, length, buffer, verbose) =>
       val ID = startRead / length
-      println(s"Start analyze of block $ID [$startRead - ${startRead + length}[")
+      if (verbose) println(s"Start analyze of block $ID [$startRead - ${startRead + length}[")
       sender ! analyzeBlock(bigDataFilePath, startRead, length, buffer)
-      println(s"Stop analyze of block $ID")
+      if (verbose) println(s"Stop analyze of block $ID")
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
 

@@ -49,7 +49,7 @@ object main extends App {
   val logger = system.actorOf(Props[TheLogger], name = "LoggerWorker")
   val master = system.actorOf(Props(new FileAnalyzer(logger, workerCount, bytesToRead)), name = "FileAnalyzer")
 
-  master ! AnalyzeFile(pathToFile)
+  master ! AnalyzeFile(pathToFile, verbose = true)
 }
 
 /*

@@ -104,7 +104,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         s"is detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
           val testActor = TestProbe()
           val worker = TestActorRef(new FileAnalyzer(testActor.ref, workerCount, bytesToRead))
-          worker ! AnalyzeFile(encodedFileFolder + fileToTest.fileName)
+          worker ! AnalyzeFile(encodedFileFolder + fileToTest.fileName, false)
           val resultToTest = testActor.receiveOne(40 seconds).asInstanceOf[FinalFullCheckResult]
           //The block test
           resultToTest.isASCII should equal(fileToTest.asciiContent)
@@ -131,7 +131,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
     case (file1, file2) =>
       s"${file1.fileName} and ${file2.fileName}" must {
         "have different detected BOM" in {
-          val same = BOM.isSameBOM(true, file1.encoding, encodedFileFolder + file1.fileName, encodedFileFolder + file2.fileName)
+          val same = BOM.isSameBOM(false, file1.encoding, encodedFileFolder + file1.fileName, encodedFileFolder + file2.fileName)
           same should be(false)
         }
       }
@@ -150,7 +150,6 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         "the test file should be deleted before the test if it exists" in {
           if (testFile.exists()) {
             testFile.delete()
-            Thread.sleep(100l)
             testFile should not be 'exists
           }
         }
