@@ -1,6 +1,6 @@
 package com.taj.unicode_detector
 
-import java.io.{FileOutputStream, FileInputStream}
+import java.io.{File, FileOutputStream, FileInputStream}
 import java.nio.file.{Paths, Path, Files}
 
 /**
@@ -38,6 +38,7 @@ object BOM {
     // of the encoding declaration
     in mark bytesToRead
     val bytes = List(in.read, in.read, in.read, in.read)
+    in.close() // To make the file deletable after processing!
 
     ret = bytes match {
       case bigUCS4.BOM            | bigUCS4.BOM_XML           => bigUCS4
@@ -79,15 +80,23 @@ object BOM {
 
   def copyWithoutBom(from:String, to:String, verbose:Boolean) {
     val bomFrom = detect(from)
-    val output = new FileOutputStream(to)
+    val fileTo = new File(to)
+    if(fileTo.exists()) fileTo.delete()
+    Thread.sleep(100l)
+    if(fileTo.exists()) throw new IllegalStateException(s"File $to can't be deleted.")
+    val output = new FileOutputStream(fileTo)
+
     val input = removeBOM(verbose, bomFrom, from)
     val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
-    Iterator
-      .continually (input.read(bytes))
-      .takeWhile (-1 !=)
-      .foreach (read => output.write(bytes,0,read))
-    output.close()
-    input.close()
+    try{
+      Iterator
+        .continually (input.read(bytes))
+        .takeWhile (-1 !=)
+        .foreach (read => output.write(bytes,0,read))
+    } finally {
+      input.close()
+      output.close()
+    }
   }
 
   def mergeFilesWithoutBom(verbose:Boolean, destination:String, paths:String*) {
