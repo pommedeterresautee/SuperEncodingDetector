@@ -34,7 +34,7 @@ import java.nio.file.{Paths, Files}
 import java.nio.charset.{Charset, StandardCharsets}
 
 /**
- * Contain property of each BOM.
+ * Contain properties of each BOM.
  * @param charsetUsed Encoding type.
  * @param BOM List of values of the first bytes when file is not an XML.
  * @param BOM_XML List of values of the first bytes when file is an XML.
@@ -52,6 +52,7 @@ object BOM {
   val UTF16BE = BOMFileEncoding(StandardCharsets.UTF_16BE, List(0xFE, 0xFF), List(0x00, '<', 0x00, '?'))
   val UTF16LE = BOMFileEncoding(StandardCharsets.UTF_16LE, List(0xFF, 0xFE), List('<', 0x00, '?', 0x00))
   val UTF8 = BOMFileEncoding(StandardCharsets.UTF_8, List(0xEF, 0xBB, 0xBF), List(0x4C, 0x6F, 0xA7, 0x94))
+  val UTF8NoBOM = BOMFileEncoding(StandardCharsets.UTF_8, List(), List('<', '?', 'x', 'm'))
   val ASCII = BOMFileEncoding(StandardCharsets.US_ASCII, List(), List('<', '?', 'x', 'm'))
 
   /**
@@ -77,7 +78,7 @@ object BOM {
       case UTF32BEUnusual.BOM | UTF32BEUnusual.BOM_XML => UTF32BEUnusual
       case UTF16BE.BOM :+ _ :+ _ | UTF16BE.BOM_XML => UTF16BE
       case UTF16LE.BOM :+ _ :+ _ | UTF16LE.BOM_XML => UTF16LE
-      case UTF8.BOM :+ _ | UTF8.BOM_XML => UTF8
+      case UTF8.BOM :+ _ | UTF8.BOM_XML => UTF8 //TODO Ajouter un test pour détecter sur le contenu du fichier.
       case _ => ASCII
     }
     ret

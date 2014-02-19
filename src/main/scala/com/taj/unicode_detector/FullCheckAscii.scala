@@ -47,6 +47,15 @@ case class FinalFullCheckResult(isASCII: Boolean, timeElapsed: Long) extends Mes
 
 object ParamAKKA {
   val bufferSize: Int = 1024 * 1024 * 10
+
+  /**
+   * Compute the number of AKKA workers needed to process the file ideally.
+   * @param fileSize size of the file to process
+   * @return the number of workers.
+   */
+  def numberOfWorkerRequired(fileSize: Long) = (1 to Runtime.getRuntime.availableProcessors)
+    .find(_ * bufferSize >= fileSize)
+    .getOrElse(Runtime.getRuntime.availableProcessors)
 }
 
 class TheLogger extends Actor {
@@ -58,7 +67,11 @@ class TheLogger extends Actor {
   }
 }
 
-class FileAnalyzer(logger: ActorRef, nbrOfWorkers: Int, totalLengthToAnalyze: Long) extends Actor {
+class FileAnalyzer(logger: ActorRef, totalLengthToAnalyze: Long) extends Actor {
+
+  // Determine the minimum of Workers depending of the size of the file and the size of the buffer.
+  // If we are working on a small file, start less workers, if it s a big file, use the number of cores.
+  val nbrOfWorkers = ParamAKKA.numberOfWorkerRequired(totalLengthToAnalyze)
 
   val startTime = System.currentTimeMillis
   // to compute time elapsed to give a result
@@ -120,4 +133,17 @@ private class BlockAnalyzer extends Actor {
     Result(isASCII)
   }
 }
+
+//TODO find the location of the error if one is found
+/*
+* isASCII = Iterator
+        .continually(randomAccessFile.read(buffer))
+        .takeWhile(c => c != -1
+        && randomAccessFile.getFilePointer <= limitToAnalyze + main.bufferSize) // stop when the end of file || block is reached
+        .zipWithIndex
+        .flatMap{case(_, bufferCounter) => buffer.map((_, bufferCounter))}
+        .zipWithIndex
+        .map{case((byte, bufferCounter), arrayCounter) => (byte, bufferCounter, arrayCounter)}
+        .find{case(testedByte, bufferCounter, arrayCounter) => testedByte < 0 && testedByte > 127}
+* */
 

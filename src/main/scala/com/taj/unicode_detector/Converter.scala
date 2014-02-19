@@ -51,8 +51,7 @@ object Converter {
       buffer
         .map(lineOfText => transformation(lineOfText) + (if (buffer.hasNext) "\n" else ""))
         .foreach(output.write)
-    }
-    finally {
+    } finally {
       content.close()
       output.close()
     }
