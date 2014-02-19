@@ -35,6 +35,8 @@ import akka.actor.{Props, ActorSystem}
 object main extends App {
 
 
+  //  println(BOM.convertStringToASCII("çàêûîôérde"))
+
   val pathToFile = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\test.txt"
   val percentageToAnalyze = 100
 

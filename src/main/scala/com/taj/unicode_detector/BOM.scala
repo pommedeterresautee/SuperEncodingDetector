@@ -31,27 +31,28 @@ package com.taj.unicode_detector
 
 import java.io.{File, FileOutputStream, FileInputStream}
 import java.nio.file.{Paths, Files}
+import java.nio.charset.{Charset, StandardCharsets}
 
 /**
  * Contain property of each BOM.
- * @param name Name of the encoding type.
+ * @param charset Encoding type.
  * @param BOM List of values of the first bytes when file is not an XML.
  * @param BOM_XML List of values of the first bytes when file is an XML.
  */
-case class BOMFileEncoding(name: String, BOM: List[Int], BOM_XML: List[Int])
+case class BOMFileEncoding(charset: Charset, BOM: List[Int], BOM_XML: List[Int])
 
 /**
  * Main class to detect a file encoding based on its BOM.
  */
 object BOM {
-  val bigUCS4 = BOMFileEncoding("UCS-4", List(0x00, 0x00, 0xFE, 0xFF), List(0x00, 0x00, 0x00, '<'))
-  val littleUCS4 = BOMFileEncoding("UCS-4", List(0xFF, 0xFE, 0x00, 0x00), List('<', 0x00, 0x00, 0x00))
-  val unusualUCS4 = BOMFileEncoding("UCS-4", List(0x00, 0x00, 0xFF, 0xFE), List(0x00, 0x00, '<', 0x00))
-  val unusualUCS4_bis = BOMFileEncoding("UCS-4", List(0xFE, 0xFF, 0x00, 0x00), List(0x00, '<', 0x00, 0x00))
-  val UTF16BE = BOMFileEncoding("UTF-16BE", List(0xFE, 0xFF), List(0x00, '<', 0x00, '?'))
-  val UTF16LE = BOMFileEncoding("UTF-16LE", List(0xFF, 0xFE), List('<', 0x00, '?', 0x00))
-  val UTF8 = BOMFileEncoding("UTF-8", List(0xEF, 0xBB, 0xBF), List(0x4C, 0x6F, 0xA7, 0x94))
-  val ASCII = BOMFileEncoding("ASCII", List(), List('<', '?', 'x', 'm'))
+  val UTF32BE = BOMFileEncoding(Charset.forName("UTF-32BE"), List(0x00, 0x00, 0xFE, 0xFF), List(0x00, 0x00, 0x00, '<'))
+  val UTF32LE = BOMFileEncoding(Charset.forName("UTF-32LE"), List(0xFF, 0xFE, 0x00, 0x00), List('<', 0x00, 0x00, 0x00))
+  val UTF32BEUnusual = BOMFileEncoding(Charset.forName("x-UTF-32BE-BOM"), List(0xFE, 0xFF, 0x00, 0x00), List(0x00, '<', 0x00, 0x00))
+  val UTF32LEUnusual = BOMFileEncoding(Charset.forName("x-UTF-32LE-BOM"), List(0x00, 0x00, 0xFF, 0xFE), List(0x00, 0x00, '<', 0x00))
+  val UTF16BE = BOMFileEncoding(StandardCharsets.UTF_16BE, List(0xFE, 0xFF), List(0x00, '<', 0x00, '?'))
+  val UTF16LE = BOMFileEncoding(StandardCharsets.UTF_16LE, List(0xFF, 0xFE), List('<', 0x00, '?', 0x00))
+  val UTF8 = BOMFileEncoding(StandardCharsets.UTF_8, List(0xEF, 0xBB, 0xBF), List(0x4C, 0x6F, 0xA7, 0x94))
+  val ASCII = BOMFileEncoding(StandardCharsets.US_ASCII, List(), List('<', '?', 'x', 'm'))
 
   /**
    * Detects the encoding of a file based on its BOM.
@@ -70,10 +71,10 @@ object BOM {
     in.close() // To make the file deletable after processing!
 
     ret = bytes match {
-      case bigUCS4.BOM | bigUCS4.BOM_XML => bigUCS4
-      case littleUCS4.BOM | littleUCS4.BOM_XML => littleUCS4
-      case unusualUCS4.BOM | unusualUCS4.BOM_XML => unusualUCS4
-      case unusualUCS4_bis.BOM | unusualUCS4_bis.BOM_XML => unusualUCS4_bis
+      case UTF32BE.BOM | UTF32BE.BOM_XML => UTF32BE
+      case UTF32LE.BOM | UTF32LE.BOM_XML => UTF32LE
+      case UTF32LEUnusual.BOM | UTF32LEUnusual.BOM_XML => UTF32LEUnusual
+      case UTF32BEUnusual.BOM | UTF32BEUnusual.BOM_XML => UTF32BEUnusual
       case UTF16BE.BOM :+ _ :+ _ | UTF16BE.BOM_XML => UTF16BE
       case UTF16LE.BOM :+ _ :+ _ | UTF16LE.BOM_XML => UTF16LE
       case UTF8.BOM :+ _ | UTF8.BOM_XML => UTF8
@@ -95,7 +96,7 @@ object BOM {
       path: String =>
         val detectedBOM = detect(path)
         val same = bom.equals(detectedBOM)
-        if (!same && verbose) println(s"The first file [${paths(0)}] is encoded as ${bom.name} but the file [$path] is encoded as ${detectedBOM.name}.")
+        if (!same && verbose) println(s"The first file [${paths(0)}] is encoded as ${bom.charset} but the file [$path] is encoded as ${detectedBOM.charset}.")
         same
     }
   }
