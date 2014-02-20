@@ -31,18 +31,29 @@ package com.taj.unicode_detector
 
 import java.io.File
 import akka.actor.{Props, ActorSystem}
+import scala.concurrent.Await
 
 object main extends App {
+  val testResourcesFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}"
+  val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
+  val fileToTest = new File(encodedFileFolder).listFiles()(0)
 
-  val pathToFile = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\test.txt"
   val percentageToAnalyze = 100
 
-  val bytesToRead = new File(pathToFile).length() * percentageToAnalyze / 100
+  val bytesToRead = fileToTest.length() * percentageToAnalyze / 100
 
   val system = ActorSystem("AsciiDetector")
 
-  val logger = system.actorOf(Props[TheLogger], name = "LoggerWorker")
-  val master = system.actorOf(Props(new FileAnalyzer(logger, bytesToRead)), name = "FileAnalyzer")
+  val master = system.actorOf(Props(new FileAnalyzer(bytesToRead)), name = "FileAnalyzer")
 
-  master ! AnalyzeFile(pathToFile, verbose = true)
+  import akka.util.Timeout
+  import akka.pattern.ask
+
+  implicit val timeout = Timeout(1000)
+  Await.result(master ? AnalyzeFile(fileToTest.getAbsolutePath, verbose = true), timeout.duration) match {
+    case FinalFullCheckResult(isBlockASCII, time) ⇒
+      println(s"the result of the analyze is ${if (isBlockASCII) "ascii" else "non ascii"} and has been obtained in ${time / 1000}s")
+      system.shutdown() // stop all the actors
+    case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor")
+  }
 }

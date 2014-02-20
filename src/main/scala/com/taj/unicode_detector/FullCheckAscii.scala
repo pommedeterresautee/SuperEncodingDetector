@@ -58,21 +58,12 @@ object ParamAKKA {
     .getOrElse(Runtime.getRuntime.availableProcessors)
 }
 
-class TheLogger extends Actor {
-  def receive = {
-    case FinalFullCheckResult(isBlockASCII, time) ⇒
-      println(s"the result of the analyze is ${if (isBlockASCII) "ascii" else "non ascii"} and has been obtained in ${time / 1000}s")
-      context.system.shutdown() // stop all the actors
-    case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
-  }
-}
-
-class FileAnalyzer(logger: ActorRef, totalLengthToAnalyze: Long) extends Actor {
+class FileAnalyzer(totalLengthToAnalyze: Long) extends Actor {
 
   // Determine the minimum of Workers depending of the size of the file and the size of the buffer.
   // If we are working on a small file, start less workers, if it s a big file, use the number of cores.
   val nbrOfWorkers = ParamAKKA.numberOfWorkerRequired(totalLengthToAnalyze)
-
+  var masterSender: ActorRef = _
   val startTime = System.currentTimeMillis
   // to compute time elapsed to give a result
   val router = context.actorOf(Props[BlockAnalyzer].withRouter(RoundRobinRouter(nbrOfWorkers)), name = "workerRouter")
@@ -84,6 +75,8 @@ class FileAnalyzer(logger: ActorRef, totalLengthToAnalyze: Long) extends Actor {
   def receive = {
     case AnalyzeFile(path, verbose) =>
       if (verbose) println("Start the processing...")
+      if (verbose) println(s"received a message from $sender")
+      masterSender = sender
       if (!new File(path).exists()) throw new IllegalArgumentException(s"Provided file doesn't exist: $path")
       (0 to nbrOfWorkers - 1)
         .foreach(workerNbr =>
@@ -92,8 +85,10 @@ class FileAnalyzer(logger: ActorRef, totalLengthToAnalyze: Long) extends Actor {
       resultReceived += 1
       resultOfAnalyze &= isBlockASCII
       if (resultReceived == nbrOfWorkers || !resultOfAnalyze) {
-        logger ! FinalFullCheckResult(isBlockASCII, System.currentTimeMillis() - startTime)
+        println(s"send back the final result to $sender")
+        masterSender ! FinalFullCheckResult(isBlockASCII, System.currentTimeMillis() - startTime)
         context.stop(self) // stop this actor and its children
+        println("finished the process")
       }
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }

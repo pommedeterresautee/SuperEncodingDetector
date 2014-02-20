@@ -31,15 +31,17 @@ package com.taj.unicode_detector.test
 
 import org.scalatest._
 import java.io.{FileInputStream, RandomAccessFile, File}
-import akka.actor.ActorSystem
+import akka.actor.{Props, ActorSystem}
 import com.taj.unicode_detector._
-import akka.testkit.{TestProbe, ImplicitSender, TestKit, TestActorRef}
-import scala.concurrent.duration._
+import akka.testkit.{ImplicitSender, TestKit}
 
 import com.taj.unicode_detector.AnalyzeFile
 import com.taj.unicode_detector.FinalFullCheckResult
 import com.taj.unicode_detector
 import org.apache.commons.codec.digest.DigestUtils
+import scala.concurrent.Await
+import akka.util.Timeout
+import akka.pattern.ask
 
 /**
  * A case class to contain the parameters of a test file.
@@ -98,10 +100,9 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         s"is detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
-          val testActor = TestProbe()
-          val worker = TestActorRef(new FileAnalyzer(testActor.ref, fileSize))
-          worker ! AnalyzeFile(encodedFileFolder + fileToTest.fileName, verbose = false)
-          val resultToTest = testActor.receiveOne(40 seconds).asInstanceOf[FinalFullCheckResult]
+          implicit val timeout = Timeout(20000)
+          val master = system.actorOf(Props(new FileAnalyzer(fileSize)), name = s"ActorOf_${fileToTest.fileName}")
+          val resultToTest = Await.result(master ? AnalyzeFile(encodedFileFolder + fileToTest.fileName, verbose = false), timeout.duration).asInstanceOf[FinalFullCheckResult]
           //The block test
           resultToTest.isASCII should equal(fileToTest.asciiContent)
         }
