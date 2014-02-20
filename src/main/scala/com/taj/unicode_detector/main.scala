@@ -32,11 +32,13 @@ package com.taj.unicode_detector
 import java.io.File
 import akka.actor.{Props, ActorSystem}
 import scala.concurrent.Await
+import akka.util.Timeout
+import akka.pattern.ask
 
 object main extends App {
   val testResourcesFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}"
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
-  val fileToTest = new File(encodedFileFolder).listFiles()(0)
+  val fileToTest = new File(encodedFileFolder, "utf8_without_BOM_bis.txt")
 
   val percentageToAnalyze = 100
 
@@ -44,12 +46,10 @@ object main extends App {
 
   val system = ActorSystem("AsciiDetector")
 
-  val master = system.actorOf(Props(new FileAnalyzer(bytesToRead)), name = "FileAnalyzer")
+  val master = system.actorOf(Props(new UTF8FileAnalyzer(bytesToRead)), name = "FileAnalyzer")
 
-  import akka.util.Timeout
-  import akka.pattern.ask
+  implicit val timeout = Timeout(30000)
 
-  implicit val timeout = Timeout(1000)
   Await.result(master ? AnalyzeFile(fileToTest.getAbsolutePath, verbose = true), timeout.duration) match {
     case FinalFullCheckResult(isBlockASCII, time) ⇒
       println(s"the result of the analyze is ${if (isBlockASCII) "ascii" else "non ascii"} and has been obtained in ${time / 1000}s")

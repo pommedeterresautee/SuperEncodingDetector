@@ -101,7 +101,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
 
         s"is detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
           implicit val timeout = Timeout(20000)
-          val master = system.actorOf(Props(new FileAnalyzer(fileSize)), name = s"ActorOf_${fileToTest.fileName}")
+          val master = system.actorOf(Props(new ASCIIFileAnalyzer(fileSize)), name = s"ActorOf_${fileToTest.fileName}")
           val resultToTest = Await.result(master ? AnalyzeFile(encodedFileFolder + fileToTest.fileName, verbose = false), timeout.duration).asInstanceOf[FinalFullCheckResult]
           //The block test
           resultToTest.isASCII should equal(fileToTest.asciiContent)

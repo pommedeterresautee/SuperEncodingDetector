@@ -39,7 +39,7 @@ sealed trait MessageAKKA
 
 case class AnalyzeFile(path: String, verbose: Boolean) extends MessageAKKA
 
-case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, verbose: Boolean) extends MessageAKKA
+case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Boolean, verbose: Boolean) extends MessageAKKA
 
 case class Result(value: Boolean, verbose: Boolean) extends MessageAKKA
 
@@ -56,9 +56,29 @@ object ParamAKKA {
   def numberOfWorkerRequired(fileSize: Long) = (1 to Runtime.getRuntime.availableProcessors)
     .find(_ * bufferSize >= fileSize)
     .getOrElse(Runtime.getRuntime.availableProcessors)
+
+  val checkASCII: Array[Byte] => Boolean = _.map(_.toInt).forall(_ >= 0)
+
+  val checkUTF8: Array[Byte] => Boolean = {
+    byteArray =>
+      val size = byteArray.takeWhile(_ != 0).size
+      println(size)
+      (0 to (size - 4))
+        .map(i => (byteArray(i), byteArray(i + 1), byteArray(i + 2), byteArray(i + 3)))
+        .exists {
+        case (b1, b2, b3, b4) if (b1 & 0xFF) >= 192 & (b2 & 0xFF) >= 128 => true
+        case (b1, b2, b3, b4) if (b1 & 0xFF) >= 224 & (b2 & 0xFF) >= 128 & (b3 & 0xFF) >= 128 => true
+        case (b1, b2, b3, b4) if (b1 & 0xFF) >= 240 & (b2 & 0xFF) >= 128 & (b3 & 0xFF) >= 128 & (b4 & 0xFF) >= 128 => true
+        case (b1, b2, b3, b4) => false
+      }
+  }
 }
 
-class FileAnalyzer(totalLengthToAnalyze: Long) extends Actor {
+class UTF8FileAnalyzer(totalLengthToAnalyze: Long) extends FileAnalyzer(totalLengthToAnalyze: Long, testToOperate = ParamAKKA.checkUTF8)
+
+class ASCIIFileAnalyzer(totalLengthToAnalyze: Long) extends FileAnalyzer(totalLengthToAnalyze: Long, testToOperate = ParamAKKA.checkASCII)
+
+class FileAnalyzer(totalLengthToAnalyze: Long, testToOperate: Array[Byte] => Boolean) extends Actor {
 
   // Determine the minimum of Workers depending of the size of the file and the size of the buffer.
   // If we are working on a small file, start less workers, if it s a big file, use the number of cores.
@@ -80,7 +100,7 @@ class FileAnalyzer(totalLengthToAnalyze: Long) extends Actor {
       if (!new File(path).exists()) throw new IllegalArgumentException(s"Provided file doesn't exist: $path")
       (0 to nbrOfWorkers - 1)
         .foreach(workerNbr =>
-        router ! AnalyzeBlock(path, workerNbr * lengthPerWorkerToAnalyze, lengthPerWorkerToAnalyze, ParamAKKA.bufferSize, verbose))
+        router ! AnalyzeBlock(path, workerNbr * lengthPerWorkerToAnalyze, lengthPerWorkerToAnalyze, ParamAKKA.bufferSize, testToOperate, verbose))
     case Result(isBlockASCII, verbose) =>
       resultReceived += 1
       resultOfAnalyze &= isBlockASCII
@@ -97,15 +117,15 @@ class FileAnalyzer(totalLengthToAnalyze: Long) extends Actor {
 private class BlockAnalyzer extends Actor {
 
   def receive = {
-    case AnalyzeBlock(bigDataFilePath, startRead, length, buffer, verbose) =>
+    case AnalyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate, verbose) =>
       val ID = startRead / length
       if (verbose) println(s"Start analyze of block $ID [$startRead - ${startRead + length}[")
-      sender ! analyzeBlock(bigDataFilePath, startRead, length, buffer, verbose)
+      sender ! analyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate, verbose)
       if (verbose) println(s"Stop analyze of block $ID")
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
 
-  private def analyzeBlock(path: String, startRead: Long, lengthOfBlockToAnalyze: Long, bufferSize: Integer, verbose: Boolean): Result = {
+  private def analyzeBlock(path: String, startRead: Long, lengthOfBlockToAnalyze: Long, bufferSize: Integer, testToOperate: Array[Byte] => Boolean, verbose: Boolean): Result = {
     val limitToAnalyze = startRead + lengthOfBlockToAnalyze
     val randomAccessFile = new RandomAccessFile(path, "r")
     val buffer = new Array[Byte](bufferSize)
@@ -117,11 +137,8 @@ private class BlockAnalyzer extends Actor {
         .continually(randomAccessFile.read(buffer))
         .takeWhile(c => c != -1
         && randomAccessFile.getFilePointer <= limitToAnalyze + bufferSize) // stop when the end of file || block is reached
-        .flatMap(_ => buffer)
-        .map(_.toInt)
-        .forall {
-        testedByte => testedByte >= 0 && testedByte <= 127
-      }
+        .map(_ => buffer) // buffer
+        .forall(testToOperate)
     } finally {
       randomAccessFile.close()
     }

@@ -32,6 +32,10 @@ package com.taj.unicode_detector
 import java.io.{File, FileOutputStream, FileInputStream}
 import java.nio.file.{Paths, Files}
 import java.nio.charset.{Charset, StandardCharsets}
+import akka.actor.{Props, ActorSystem}
+import akka.util.Timeout
+import scala.concurrent.Await
+import akka.pattern.ask
 
 /**
  * Contain properties of each BOM.
@@ -78,8 +82,25 @@ object BOM {
       case UTF32BEUnusual.BOM | UTF32BEUnusual.BOM_XML => UTF32BEUnusual
       case UTF16BE.BOM :+ _ :+ _ | UTF16BE.BOM_XML => UTF16BE
       case UTF16LE.BOM :+ _ :+ _ | UTF16LE.BOM_XML => UTF16LE
-      case UTF8.BOM :+ _ | UTF8.BOM_XML => UTF8 //TODO Ajouter un test pour détecter sur le contenu du fichier.
-      case _ => ASCII
+      case UTF8.BOM :+ _ | UTF8.BOM_XML => UTF8
+      case _ =>
+        var result: BOMFileEncoding = null
+        val system = ActorSystem("FileIdentification")
+        val master = system.actorOf(Props(new UTF8FileAnalyzer(bytesToRead)), name = "UTF8FileAnalyzer")
+        implicit val timeout = Timeout(20000)
+        Await.result(master ? AnalyzeFile(file, verbose = true), timeout.duration) match {
+          case FinalFullCheckResult(true, _) => result = UTF8NoBOM
+          case FinalFullCheckResult(false, _) =>
+            val master = system.actorOf(Props(new ASCIIFileAnalyzer(bytesToRead)), name = "ASCIIFileAnalyzer")
+            Await.result(master ? AnalyzeFile(file, verbose = true), timeout.duration) match {
+              case FinalFullCheckResult(true, _) => result = ASCII
+              case FinalFullCheckResult(false, _) => result = UTF8NoBOM
+              case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor - ASCII check")
+            }
+          case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor - UTF8 no BOM check")
+        }
+        system.shutdown()
+        result
     }
     ret
   }
