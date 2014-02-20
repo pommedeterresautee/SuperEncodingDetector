@@ -41,7 +41,7 @@ case class AnalyzeFile(path: String, verbose: Boolean) extends MessageAKKA
 
 case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, verbose: Boolean) extends MessageAKKA
 
-case class Result(value: Boolean) extends MessageAKKA
+case class Result(value: Boolean, verbose: Boolean) extends MessageAKKA
 
 case class FinalFullCheckResult(isASCII: Boolean, timeElapsed: Long) extends MessageAKKA
 
@@ -81,14 +81,14 @@ class FileAnalyzer(totalLengthToAnalyze: Long) extends Actor {
       (0 to nbrOfWorkers - 1)
         .foreach(workerNbr =>
         router ! AnalyzeBlock(path, workerNbr * lengthPerWorkerToAnalyze, lengthPerWorkerToAnalyze, ParamAKKA.bufferSize, verbose))
-    case Result(isBlockASCII) =>
+    case Result(isBlockASCII, verbose) =>
       resultReceived += 1
       resultOfAnalyze &= isBlockASCII
       if (resultReceived == nbrOfWorkers || !resultOfAnalyze) {
-        println(s"send back the final result to $sender")
+        if (verbose) println(s"send back the final result to $sender")
         masterSender ! FinalFullCheckResult(isBlockASCII, System.currentTimeMillis() - startTime)
         context.stop(self) // stop this actor and its children
-        println("finished the process")
+        if (verbose) println("Finished the Akka process")
       }
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
@@ -100,12 +100,12 @@ private class BlockAnalyzer extends Actor {
     case AnalyzeBlock(bigDataFilePath, startRead, length, buffer, verbose) =>
       val ID = startRead / length
       if (verbose) println(s"Start analyze of block $ID [$startRead - ${startRead + length}[")
-      sender ! analyzeBlock(bigDataFilePath, startRead, length, buffer)
+      sender ! analyzeBlock(bigDataFilePath, startRead, length, buffer, verbose)
       if (verbose) println(s"Stop analyze of block $ID")
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
 
-  private def analyzeBlock(path: String, startRead: Long, lengthOfBlockToAnalyze: Long, bufferSize: Integer): Result = {
+  private def analyzeBlock(path: String, startRead: Long, lengthOfBlockToAnalyze: Long, bufferSize: Integer, verbose: Boolean): Result = {
     val limitToAnalyze = startRead + lengthOfBlockToAnalyze
     val randomAccessFile = new RandomAccessFile(path, "r")
     val buffer = new Array[Byte](bufferSize)
@@ -125,7 +125,7 @@ private class BlockAnalyzer extends Actor {
     } finally {
       randomAccessFile.close()
     }
-    Result(isASCII)
+    Result(isASCII, verbose)
   }
 }
 
