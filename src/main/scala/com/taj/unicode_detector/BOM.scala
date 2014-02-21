@@ -58,7 +58,7 @@ object BOM {
   val UTF8 = BOMFileEncoding(Some(StandardCharsets.UTF_8), List(0xEF, 0xBB, 0xBF), List(0x4C, 0x6F, 0xA7, 0x94))
   val UTF8NoBOM = BOMFileEncoding(Some(StandardCharsets.UTF_8), List(), List('<', '?', 'x', 'm'))
   val ASCII = BOMFileEncoding(Some(StandardCharsets.US_ASCII), List(), List('<', '?', 'x', 'm'))
-  val Unknown = BOMFileEncoding(None, List(), List())
+  val UnknownEncoding = BOMFileEncoding(None, List(), List())
 
   /**
    * Detects the encoding of a file based on its BOM.
@@ -84,7 +84,7 @@ object BOM {
       case UTF16BE.BOM :+ _ :+ _ | UTF16BE.BOM_XML => UTF16BE
       case UTF16LE.BOM :+ _ :+ _ | UTF16LE.BOM_XML => UTF16LE
       case UTF8.BOM :+ _ | UTF8.BOM_XML => UTF8
-      case _ =>
+      case _ => // No BOM detected
         var result: BOMFileEncoding = null
         val system = ActorSystem("FileIdentification")
         val master = system.actorOf(Props(new UTF8FileAnalyzer(bytesToRead)), name = "UTF8FileAnalyzer")
@@ -95,10 +95,10 @@ object BOM {
             val master = system.actorOf(Props(new ASCIIFileAnalyzer(bytesToRead)), name = "ASCIIFileAnalyzer")
             Await.result(master ? AnalyzeFile(file, verbose = true), timeout.duration) match {
               case FinalFullCheckResult(true, _) => result = ASCII
-              case FinalFullCheckResult(false, _) => result = UTF8NoBOM
-              case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor - ASCII check")
+              case FinalFullCheckResult(false, _) => result = UnknownEncoding
+              case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during ASCII check")
             }
-          case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor - UTF8 no BOM check")
+          case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during UTF8 no BOM check")
         }
         system.shutdown()
         result
