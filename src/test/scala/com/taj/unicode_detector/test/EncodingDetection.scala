@@ -59,18 +59,18 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
   val tempFilesFolder = testResourcesFolder + s"temp${File.separator}"
 
   // First serie of text files with or without BOM
-  val utf8_with_BOM = testFileProperties("utf8_with_BOM.txt", BOM.UTF8, asciiContent = false, 1)
-  val utf8_without_BOM = testFileProperties("utf8_without_BOM.txt", BOM.UTF8NoBOM, asciiContent = false, 1)
-  val UTF16_BE = testFileProperties("UTF16_BE.txt", BOM.UTF16BE, asciiContent = false, 1)
-  val UTF16_LE = testFileProperties("UTF16_LE.txt", BOM.UTF16LE, asciiContent = false, 1)
+  val UTF8_with_BOM = testFileProperties("utf8_with_BOM.txt", BOM.UTF8, asciiContent = false, 1)
+  val UTF8_without_BOM = testFileProperties("utf8_without_BOM.txt", BOM.UTF8NoBOM, asciiContent = false, 1)
+  val UTF16_BE = testFileProperties("UTF16_BE.txt", BOM.UTF_16_BE, asciiContent = false, 1)
+  val UTF16_LE = testFileProperties("UTF16_LE.txt", BOM.UTF_16_LE, asciiContent = false, 1)
   val ASCII = testFileProperties("ascii.txt", BOM.ASCII, asciiContent = true, 1)
   // Second serie of files with BOM for comparison purpose
-  val utf8_with_BOM_bis = testFileProperties("utf8_with_BOM_bis.txt", BOM.UTF8, asciiContent = false, 1)
-  val utf8_without_BOM_bis = testFileProperties("utf8_without_BOM_bis.txt", BOM.UTF8NoBOM, asciiContent = false, 1)
-  val UTF16_BE_bis = testFileProperties("UTF16_BE_bis.txt", BOM.UTF16BE, asciiContent = false, 1)
-  val UTF16_LE_bis = testFileProperties("UTF16_LE_bis.txt", BOM.UTF16LE, asciiContent = false, 1)
+  val UTF8_with_BOM_bis = testFileProperties("utf8_with_BOM_bis.txt", BOM.UTF8, asciiContent = false, 1)
+  val UTF8_without_BOM_bis = testFileProperties("utf8_without_BOM_bis.txt", BOM.UTF8NoBOM, asciiContent = false, 1)
+  val UTF16_BE_bis = testFileProperties("UTF16_BE_bis.txt", BOM.UTF_16_BE, asciiContent = false, 1)
+  val UTF16_LE_bis = testFileProperties("UTF16_LE_bis.txt", BOM.UTF_16_LE, asciiContent = false, 1)
   // Files with BOM manually cleaned
-  val utf8_with_BOM_manually_cleaned = testFileProperties("utf8_with_BOM_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
+  val UTF8_with_BOM_manually_cleaned = testFileProperties("utf8_with_BOM_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
   val UTF16_BE_manually_cleaned = testFileProperties("UTF16_BE_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
   val UTF16_LE_manually_cleaned = testFileProperties("UTF16_LE_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
 
@@ -95,7 +95,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
     system.shutdown()
   }
 
-  Seq(utf8_with_BOM, utf8_without_BOM, UTF16_BE, UTF16_LE, ASCII, utf8_with_BOM_bis, utf8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis, utf8_with_BOM_manually_cleaned, UTF16_BE_manually_cleaned, UTF16_LE_manually_cleaned)
+  Seq(UTF8_with_BOM, UTF8_without_BOM, UTF16_BE, UTF16_LE, ASCII, UTF8_with_BOM_bis, UTF8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis, UTF8_with_BOM_manually_cleaned, UTF16_BE_manually_cleaned, UTF16_LE_manually_cleaned)
     .foreach {
     fileToTest =>
       s"${fileToTest.fileName} file" must {
@@ -114,13 +114,13 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         s"is detected as ${fileToTest.encoding.charsetUsed} based on its BOM" in {
-          val detection = BOM.detect(encodedFileFolder + fileToTest.fileName, false)
+          val detection = BOM.detect(encodedFileFolder + fileToTest.fileName, verbose = false)
           detection should equal(fileToTest.encoding)
         }
       }
   }
 
-  Seq((utf8_with_BOM, utf8_with_BOM_bis), (utf8_without_BOM, utf8_without_BOM_bis), (UTF16_BE, UTF16_BE_bis), (UTF16_LE, UTF16_LE_bis)).foreach {
+  Seq((UTF8_with_BOM, UTF8_with_BOM_bis), (UTF8_without_BOM, UTF8_without_BOM_bis), (UTF16_BE, UTF16_BE_bis), (UTF16_LE, UTF16_LE_bis)).foreach {
     case (first, second) =>
       val firstPath = encodedFileFolder + first.fileName
       val firstFile = new File(firstPath)
@@ -143,7 +143,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
       }
   }
 
-  Seq((utf8_with_BOM, utf8_without_BOM), (UTF16_BE, utf8_with_BOM), (utf8_with_BOM, UTF16_LE), (UTF16_BE, UTF16_LE)).foreach {
+  Seq((UTF8_with_BOM, UTF8_without_BOM), (UTF16_BE, UTF8_with_BOM), (UTF8_with_BOM, UTF16_LE), (UTF16_BE, UTF16_LE)).foreach {
     case (file1, file2) =>
       s"${file1.fileName} and ${file2.fileName}" must {
         "have different detected BOM" in {
@@ -153,7 +153,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
       }
   }
 
-  Seq((utf8_with_BOM, utf8_with_BOM_manually_cleaned), (UTF16_BE, UTF16_BE_manually_cleaned), (UTF16_LE, UTF16_LE_manually_cleaned), (ASCII, ASCII)).foreach {
+  Seq((UTF8_with_BOM, UTF8_with_BOM_manually_cleaned), (UTF16_BE, UTF16_BE_manually_cleaned), (UTF16_LE, UTF16_LE_manually_cleaned), (ASCII, ASCII)).foreach {
     case (source, manuallyCleaned) =>
       s"The BOM of the file ${source.fileName} will be removed and " must {
         val sourcePath = encodedFileFolder + source.fileName
@@ -173,7 +173,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         "the file must be detected as ASCII" in {
           BOM.copyWithoutBom(sourcePath, tempFilePath, verbose = true)
           tempFile should be('exists)
-          BOM.detect(tempFile.getAbsolutePath, false).charsetUsed should be(unicode_detector.BOM.ASCII.charsetUsed)
+          BOM.detect(tempFile.getAbsolutePath, verbose = false).charsetUsed should be(unicode_detector.BOM.ASCII.charsetUsed)
         }
 
         s"the size of ${tempFile.getName} should be equal to the size of ${manuallyCleaned.fileName}" in {
@@ -207,13 +207,16 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
       }
   }
 
-  Seq(utf8_with_BOM, UTF16_BE, UTF16_LE, utf8_with_BOM_bis, utf8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis).foreach {
+  Seq(ASCII, UTF8_with_BOM, UTF16_BE, UTF16_LE, UTF8_with_BOM_bis, UTF8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis).foreach {
     file =>
       val fileToConvert = encodedFileFolder + file.fileName
       val convertedFile = tempFilesFolder + "converted_" + file.fileName
       s"convert the file ${file.fileName} to ASCII" in {
         Converter.convert2ASCII(fileToConvert, convertedFile, file.encoding, verbose = false)
+        new File(convertedFile) should be('exists)
         convertedFile.length should be > 0
+        val encoding = BOM.detect(convertedFile, verbose = false)
+        encoding should equal(BOM.ASCII)
       }
   }
 }

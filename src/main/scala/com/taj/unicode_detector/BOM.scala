@@ -53,8 +53,8 @@ object BOM {
   val UTF32LE = BOMFileEncoding(Some(Charset.forName("UTF-32LE")), List(0xFF, 0xFE, 0x00, 0x00), List('<', 0x00, 0x00, 0x00))
   val UTF32BEUnusual = BOMFileEncoding(Some(Charset.forName("x-UTF-32BE-BOM")), List(0xFE, 0xFF, 0x00, 0x00), List(0x00, '<', 0x00, 0x00))
   val UTF32LEUnusual = BOMFileEncoding(Some(Charset.forName("x-UTF-32LE-BOM")), List(0x00, 0x00, 0xFF, 0xFE), List(0x00, 0x00, '<', 0x00))
-  val UTF16BE = BOMFileEncoding(Some(StandardCharsets.UTF_16BE), List(0xFE, 0xFF), List(0x00, '<', 0x00, '?'))
-  val UTF16LE = BOMFileEncoding(Some(StandardCharsets.UTF_16LE), List(0xFF, 0xFE), List('<', 0x00, '?', 0x00))
+  val UTF_16_BE = BOMFileEncoding(Some(StandardCharsets.UTF_16BE), List(0xFE, 0xFF), List(0x00, '<', 0x00, '?'))
+  val UTF_16_LE = BOMFileEncoding(Some(StandardCharsets.UTF_16LE), List(0xFF, 0xFE), List('<', 0x00, '?', 0x00))
   val UTF8 = BOMFileEncoding(Some(StandardCharsets.UTF_8), List(0xEF, 0xBB, 0xBF), List(0x4C, 0x6F, 0xA7, 0x94))
   val UTF8NoBOM = BOMFileEncoding(Some(StandardCharsets.UTF_8), List(), List('<', '?', 'x', 'm'))
   val ASCII = BOMFileEncoding(Some(StandardCharsets.US_ASCII), List(), List('<', '?', 'x', 'm'))
@@ -81,8 +81,8 @@ object BOM {
       case UTF32LE.BOM | UTF32LE.BOM_XML => UTF32LE
       case UTF32LEUnusual.BOM | UTF32LEUnusual.BOM_XML => UTF32LEUnusual
       case UTF32BEUnusual.BOM | UTF32BEUnusual.BOM_XML => UTF32BEUnusual
-      case UTF16BE.BOM :+ _ :+ _ | UTF16BE.BOM_XML => UTF16BE
-      case UTF16LE.BOM :+ _ :+ _ | UTF16LE.BOM_XML => UTF16LE
+      case UTF_16_BE.BOM :+ _ :+ _ | UTF_16_BE.BOM_XML => UTF_16_BE
+      case UTF_16_LE.BOM :+ _ :+ _ | UTF_16_LE.BOM_XML => UTF_16_LE
       case UTF8.BOM :+ _ | UTF8.BOM_XML => UTF8
       case _ => // No BOM detected
         var result: BOMFileEncoding = null
