@@ -77,16 +77,22 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
   var fileSize = 0l
   var workerCount = 0
 
+
+  /**
+   * Clean all temp files before starting
+   */
+  override def beforeAll() {
+    val tmpFolder = new File(tempFilesFolder)
+    tmpFolder.listFiles().filter(!_.getName.contentEquals(".gitignore")).foreach(_.delete())
+    tmpFolder.listFiles().length should be > 0
+  }
+
   /**
    * Stops all actors when tests are finished.
    * Delete all temp files.
    */
   override def afterAll(): Unit = {
     system.shutdown()
-  }
-
-  override def beforeAll() {
-    new File(tempFilesFolder).listFiles().filter(!_.getName.contentEquals(".gitignore")).foreach(_.delete())
   }
 
   Seq(utf8_with_BOM, utf8_without_BOM, UTF16_BE, UTF16_LE, ASCII, utf8_with_BOM_bis, utf8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis, utf8_with_BOM_manually_cleaned, UTF16_BE_manually_cleaned, UTF16_LE_manually_cleaned)

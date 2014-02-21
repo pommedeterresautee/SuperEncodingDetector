@@ -43,21 +43,22 @@ import akka.pattern.ask
  * @param BOM List of values of the first bytes when file is not an XML.
  * @param BOM_XML List of values of the first bytes when file is an XML.
  */
-case class BOMFileEncoding(charsetUsed: Charset, BOM: List[Int], BOM_XML: List[Int])
+case class BOMFileEncoding(charsetUsed: Option[Charset], BOM: List[Int], BOM_XML: List[Int])
 
 /**
  * Main class to detect a file encoding based on its BOM.
  */
 object BOM {
-  val UTF32BE = BOMFileEncoding(Charset.forName("UTF-32BE"), List(0x00, 0x00, 0xFE, 0xFF), List(0x00, 0x00, 0x00, '<'))
-  val UTF32LE = BOMFileEncoding(Charset.forName("UTF-32LE"), List(0xFF, 0xFE, 0x00, 0x00), List('<', 0x00, 0x00, 0x00))
-  val UTF32BEUnusual = BOMFileEncoding(Charset.forName("x-UTF-32BE-BOM"), List(0xFE, 0xFF, 0x00, 0x00), List(0x00, '<', 0x00, 0x00))
-  val UTF32LEUnusual = BOMFileEncoding(Charset.forName("x-UTF-32LE-BOM"), List(0x00, 0x00, 0xFF, 0xFE), List(0x00, 0x00, '<', 0x00))
-  val UTF16BE = BOMFileEncoding(StandardCharsets.UTF_16BE, List(0xFE, 0xFF), List(0x00, '<', 0x00, '?'))
-  val UTF16LE = BOMFileEncoding(StandardCharsets.UTF_16LE, List(0xFF, 0xFE), List('<', 0x00, '?', 0x00))
-  val UTF8 = BOMFileEncoding(StandardCharsets.UTF_8, List(0xEF, 0xBB, 0xBF), List(0x4C, 0x6F, 0xA7, 0x94))
-  val UTF8NoBOM = BOMFileEncoding(StandardCharsets.UTF_8, List(), List('<', '?', 'x', 'm'))
-  val ASCII = BOMFileEncoding(StandardCharsets.US_ASCII, List(), List('<', '?', 'x', 'm'))
+  val UTF32BE = BOMFileEncoding(Some(Charset.forName("UTF-32BE")), List(0x00, 0x00, 0xFE, 0xFF), List(0x00, 0x00, 0x00, '<'))
+  val UTF32LE = BOMFileEncoding(Some(Charset.forName("UTF-32LE")), List(0xFF, 0xFE, 0x00, 0x00), List('<', 0x00, 0x00, 0x00))
+  val UTF32BEUnusual = BOMFileEncoding(Some(Charset.forName("x-UTF-32BE-BOM")), List(0xFE, 0xFF, 0x00, 0x00), List(0x00, '<', 0x00, 0x00))
+  val UTF32LEUnusual = BOMFileEncoding(Some(Charset.forName("x-UTF-32LE-BOM")), List(0x00, 0x00, 0xFF, 0xFE), List(0x00, 0x00, '<', 0x00))
+  val UTF16BE = BOMFileEncoding(Some(StandardCharsets.UTF_16BE), List(0xFE, 0xFF), List(0x00, '<', 0x00, '?'))
+  val UTF16LE = BOMFileEncoding(Some(StandardCharsets.UTF_16LE), List(0xFF, 0xFE), List('<', 0x00, '?', 0x00))
+  val UTF8 = BOMFileEncoding(Some(StandardCharsets.UTF_8), List(0xEF, 0xBB, 0xBF), List(0x4C, 0x6F, 0xA7, 0x94))
+  val UTF8NoBOM = BOMFileEncoding(Some(StandardCharsets.UTF_8), List(), List('<', '?', 'x', 'm'))
+  val ASCII = BOMFileEncoding(Some(StandardCharsets.US_ASCII), List(), List('<', '?', 'x', 'm'))
+  val Unknown = BOMFileEncoding(None, List(), List())
 
   /**
    * Detects the encoding of a file based on its BOM.

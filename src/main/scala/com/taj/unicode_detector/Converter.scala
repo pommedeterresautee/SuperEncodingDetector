@@ -43,8 +43,11 @@ object Converter {
 
   def convert2ASCII(sourcePath: String, destinationPath: String, encodingSource: BOMFileEncoding, verbose: Boolean) = convert(BOM.removeBOM(verbose, encodingSource, sourcePath), destinationPath, encodingSource.charsetUsed, encodingDestination = StandardCharsets.US_ASCII, convertAnyStringToASCII)
 
-  def convert(sourceIS: InputStream, destinationPath: String, encodingSource: Charset, encodingDestination: Charset, transformation: String => String) {
-    val content = Source.fromInputStream(sourceIS, encodingSource.name())
+  def convert(sourceIS: InputStream, destinationPath: String, encodingSource: Option[Charset], encodingDestination: Charset, transformation: String => String) {
+    val content = encodingSource match {
+      case Some(charset) => Source.fromInputStream(sourceIS, encodingSource.get.name())
+      case None => throw new IllegalStateException("Try to convert a file to an Unknown charset (not detected)")
+    }
     val output = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(destinationPath), encodingDestination.name()))
     try {
       val buffer = content.getLines()
