@@ -43,7 +43,7 @@ case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferS
 
 case class Result(value: Boolean, verbose: Boolean) extends MessageAKKA
 
-case class FinalFullCheckResult(isASCII: Boolean, timeElapsed: Long) extends MessageAKKA
+case class FullCheckResult(isASCII: Boolean, timeElapsed: Long) extends MessageAKKA
 
 object ParamAKKA {
   val bufferSize: Int = 1024 * 1024 * 10
@@ -106,7 +106,7 @@ class FileAnalyzer(totalLengthToAnalyze: Long, testToOperate: Array[Byte] => Boo
       resultOfAnalyze &= isBlockASCII
       if (resultReceived == nbrOfWorkers || !resultOfAnalyze) {
         if (verbose) println(s"send back the final result to $sender")
-        masterSender ! FinalFullCheckResult(isBlockASCII, System.currentTimeMillis() - startTime)
+        masterSender ! FullCheckResult(isBlockASCII, System.currentTimeMillis() - startTime)
         context.stop(self) // stop this actor and its children
         if (verbose) println("Finished the Akka process")
       }

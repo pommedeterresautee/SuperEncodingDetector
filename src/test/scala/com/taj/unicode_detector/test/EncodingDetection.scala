@@ -36,7 +36,7 @@ import com.taj.unicode_detector._
 import akka.testkit.{ImplicitSender, TestKit}
 
 import com.taj.unicode_detector.AnalyzeFile
-import com.taj.unicode_detector.FinalFullCheckResult
+import com.taj.unicode_detector.FullCheckResult
 import com.taj.unicode_detector
 import org.apache.commons.codec.digest.DigestUtils
 import scala.concurrent.Await
@@ -108,13 +108,13 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         s"is detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
           implicit val timeout = Timeout(20000)
           val master = system.actorOf(Props(new ASCIIFileAnalyzer(fileSize)), name = s"ActorOf_${fileToTest.fileName}")
-          val resultToTest = Await.result(master ? AnalyzeFile(encodedFileFolder + fileToTest.fileName, verbose = false), timeout.duration).asInstanceOf[FinalFullCheckResult]
+          val resultToTest = Await.result(master ? AnalyzeFile(encodedFileFolder + fileToTest.fileName, verbose = false), timeout.duration).asInstanceOf[FullCheckResult]
           //The block test
           resultToTest.isASCII should equal(fileToTest.asciiContent)
         }
 
         s"is detected as ${fileToTest.encoding.charsetUsed} based on its BOM" in {
-          val detection = BOM.detect(encodedFileFolder + fileToTest.fileName)
+          val detection = BOM.detect(encodedFileFolder + fileToTest.fileName, false)
           detection should equal(fileToTest.encoding)
         }
       }
@@ -173,7 +173,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         "the file must be detected as ASCII" in {
           BOM.copyWithoutBom(sourcePath, tempFilePath, verbose = true)
           tempFile should be('exists)
-          BOM.detect(tempFile.getAbsolutePath).charsetUsed should be(unicode_detector.BOM.ASCII.charsetUsed)
+          BOM.detect(tempFile.getAbsolutePath, false).charsetUsed should be(unicode_detector.BOM.ASCII.charsetUsed)
         }
 
         s"the size of ${tempFile.getName} should be equal to the size of ${manuallyCleaned.fileName}" in {

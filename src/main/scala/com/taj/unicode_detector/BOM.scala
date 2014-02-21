@@ -65,7 +65,7 @@ object BOM {
    * @param file path to the file.
    * @return the encoding. If no BOM detected, send back ASCII encoding.
    */
-  def detect(file: String): BOMFileEncoding = {
+  def detect(file: String, verbose: Boolean): BOMFileEncoding = {
     val in = new FileInputStream(file)
     var ret: BOMFileEncoding = null
     val bytesToRead = 1024 // enough to read most XML encoding declarations
@@ -87,15 +87,15 @@ object BOM {
       case _ => // No BOM detected
         var result: BOMFileEncoding = null
         val system = ActorSystem("FileIdentification")
-        val master = system.actorOf(Props(new UTF8FileAnalyzer(bytesToRead)), name = "UTF8FileAnalyzer")
+        val masterASCII = system.actorOf(Props(new ASCIIFileAnalyzer(bytesToRead)), name = "ASCIIFileAnalyzer")
         implicit val timeout = Timeout(20000)
-        Await.result(master ? AnalyzeFile(file, verbose = true), timeout.duration) match {
-          case FinalFullCheckResult(true, _) => result = UTF8NoBOM
-          case FinalFullCheckResult(false, _) =>
-            val master = system.actorOf(Props(new ASCIIFileAnalyzer(bytesToRead)), name = "ASCIIFileAnalyzer")
-            Await.result(master ? AnalyzeFile(file, verbose = true), timeout.duration) match {
-              case FinalFullCheckResult(true, _) => result = ASCII
-              case FinalFullCheckResult(false, _) => result = UnknownEncoding
+        Await.result(masterASCII ? AnalyzeFile(file, verbose), timeout.duration) match {
+          case FullCheckResult(true, _) => result = ASCII
+          case FullCheckResult(false, _) =>
+            val masterUTF8 = system.actorOf(Props(new UTF8FileAnalyzer(bytesToRead)), name = "UTF8FileAnalyzer")
+            Await.result(masterUTF8 ? AnalyzeFile(file, verbose), timeout.duration) match {
+              case FullCheckResult(true, _) => result = UTF8NoBOM
+              case FullCheckResult(false, _) => result = UnknownEncoding
               case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during ASCII check")
             }
           case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during UTF8 no BOM check")
@@ -117,7 +117,7 @@ object BOM {
     if (paths.size < 2) throw new IllegalArgumentException(s"Not enough files to compare (${paths.size})")
     paths.forall {
       path: String =>
-        val detectedBOM = detect(path)
+        val detectedBOM = detect(path, verbose)
         val same = bom.equals(detectedBOM)
         if (!same && verbose) println(s"The first file [${paths(0)}] is encoded as ${bom.charsetUsed} but the file [$path] is encoded as ${detectedBOM.charsetUsed}.")
         same
@@ -146,7 +146,7 @@ object BOM {
    * @param verbose true to see more information about the process ongoing.
    */
   def copyWithoutBom(from: String, to: String, verbose: Boolean) {
-    val bomFrom = detect(from)
+    val bomFrom = detect(from, verbose)
     val fileTo = new File(to)
     if (fileTo.exists()) fileTo.delete()
     Thread.sleep(100l)
@@ -178,7 +178,7 @@ object BOM {
     val output = new FileOutputStream(destination, true)
     try paths.drop(1).foreach {
       path =>
-        val input = removeBOM(verbose, detect(path), path)
+        val input = removeBOM(verbose, detect(path, verbose), path)
         try Iterator
           .continually(input.read(bytes))
           .takeWhile(-1 !=)

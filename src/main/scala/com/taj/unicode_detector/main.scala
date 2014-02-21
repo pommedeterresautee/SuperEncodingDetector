@@ -51,8 +51,8 @@ object main extends App {
   implicit val timeout = Timeout(30000)
 
   Await.result(master ? AnalyzeFile(fileToTest.getAbsolutePath, verbose = true), timeout.duration) match {
-    case FinalFullCheckResult(isBlockASCII, time) ⇒
-      println(s"the result of the analyze is ${if (isBlockASCII) "ascii" else "non ascii"} and has been obtained in ${time / 1000}s")
+    case FullCheckResult(isBlockASCII, time) ⇒
+    println(s"the result of the analyze is ${if (isBlockASCII) "ascii" else "non ascii"} and has been obtained in ${time / 1000}s")
       system.shutdown() // stop all the actors
     case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor")
   }
