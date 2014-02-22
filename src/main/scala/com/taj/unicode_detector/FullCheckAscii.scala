@@ -57,19 +57,46 @@ object ParamAKKA {
     .find(_ * bufferSize >= fileSize)
     .getOrElse(Runtime.getRuntime.availableProcessors)
 
-  val checkASCII: Array[Byte] => Boolean = _.map(_.toInt).forall(_ >= 0)
+  val checkASCII: Array[Byte] => Boolean = _.forall(_.toInt >= 0)
 
   val checkUTF8: Array[Byte] => Boolean = {
     byteArray =>
-      val size = byteArray.takeWhile(_ != 0).size
-      println(size)
-      (0 to (size - 4))
+      val realArraySize = byteArray.takeWhile(_ != 0).size
+      var passBytesAlreadyMatched = 4 // the first 4 bytes of the block are passed in case they are related to a truncated unicode char from another block
+    var passBytesMayMatch = -1 // if not yet the entire sequence, wait to advance 4 bytes to say if there is definitely no match
+      (0 to (realArraySize - 4))
         .map(i => (byteArray(i), byteArray(i + 1), byteArray(i + 2), byteArray(i + 3)))
-        .exists {
-        case (b1, b2, b3, b4) if (b1 & 0xFF) >= 192 & (b2 & 0xFF) >= 128 => true
-        case (b1, b2, b3, b4) if (b1 & 0xFF) >= 224 & (b2 & 0xFF) >= 128 & (b3 & 0xFF) >= 128 => true
-        case (b1, b2, b3, b4) if (b1 & 0xFF) >= 240 & (b2 & 0xFF) >= 128 & (b3 & 0xFF) >= 128 & (b4 & 0xFF) >= 128 => true
-        case _ => false
+        .forall {
+        case (b1, b2, b3, b4) if b1.toInt >= 0 & b2.toInt >= 0 & b3.toInt >= 0 & b4.toInt >= 0 => // ASCII
+          passBytesMayMatch = -1
+          passBytesAlreadyMatched = 0
+          true
+        case (b1, b2, b3, b4) if (b1 & 0xFF) >= 192 & (b2 & 0xFF) >= 128 =>
+          passBytesMayMatch = -1
+          passBytesAlreadyMatched = 1
+          true
+        case (b1, b2, b3, b4) if (b1 & 0xFF) >= 224 & (b2 & 0xFF) >= 128 & (b3 & 0xFF) >= 128 =>
+          passBytesMayMatch = -1
+          passBytesAlreadyMatched = 2
+          true
+        case (b1, b2, b3, b4) if (b1 & 0xFF) >= 240 & (b2 & 0xFF) >= 128 & (b3 & 0xFF) >= 128 & (b4 & 0xFF) >= 128 =>
+          passBytesMayMatch = -1
+          passBytesAlreadyMatched = 3
+          true
+        case (b1, b2, b3, b4) =>
+          if (passBytesAlreadyMatched > 0) {
+            passBytesAlreadyMatched -= 1
+            true
+          } else if (passBytesMayMatch == -1) {
+            passBytesMayMatch = 3 // pass the check for the next 3 bytes to get a sequence of 4 bytes.
+            true
+          } else if (passBytesMayMatch > 0) {
+            passBytesMayMatch -= 1 // decrease the count waiting for the entire sequence
+            true
+          } else {
+            //println(s"$b1 + $b2 + $b3 + $b4") // for debug purpose
+            false
+          }
       }
   }
 }
