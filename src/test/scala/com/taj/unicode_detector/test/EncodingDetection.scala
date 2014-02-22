@@ -59,20 +59,20 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
   val tempFilesFolder = testResourcesFolder + s"temp${File.separator}"
 
   // First serie of text files with or without BOM
-  val UTF8_with_BOM = testFileProperties("utf8_with_BOM.txt", BOM.UTF8, asciiContent = false, 1)
-  val UTF8_without_BOM = testFileProperties("utf8_without_BOM.txt", BOM.UTF8NoBOM, asciiContent = false, 1)
+  val UTF8_with_BOM = testFileProperties("UTF8_with_BOM.txt", BOM.UTF8, asciiContent = false, 1)
+  val UTF8_without_BOM = testFileProperties("UTF8_without_BOM.txt", BOM.UTF8NoBOM, asciiContent = false, 1)
   val UTF16_BE = testFileProperties("UTF16_BE.txt", BOM.UTF_16_BE, asciiContent = false, 1)
   val UTF16_LE = testFileProperties("UTF16_LE.txt", BOM.UTF_16_LE, asciiContent = false, 1)
-  val ASCII = testFileProperties("ascii.txt", BOM.ASCII, asciiContent = true, 1)
+  val ASCII = testFileProperties("ASCII.txt", BOM.ASCII, asciiContent = true, 1)
   val Windows_1252 = testFileProperties("Windows_1252.txt", BOM.UnknownEncoding, asciiContent = false, 1)
 
   // Second serie of files with BOM for comparison purpose
-  val UTF8_with_BOM_bis = testFileProperties("utf8_with_BOM_bis.txt", BOM.UTF8, asciiContent = false, 1)
-  val UTF8_without_BOM_bis = testFileProperties("utf8_without_BOM_bis.txt", BOM.UTF8NoBOM, asciiContent = false, 1)
+  val UTF8_with_BOM_bis = testFileProperties("UTF8_with_BOM_bis.txt", BOM.UTF8, asciiContent = false, 1)
+  val UTF8_without_BOM_bis = testFileProperties("UTF8_without_BOM_bis.txt", BOM.UTF8NoBOM, asciiContent = false, 1)
   val UTF16_BE_bis = testFileProperties("UTF16_BE_bis.txt", BOM.UTF_16_BE, asciiContent = false, 1)
   val UTF16_LE_bis = testFileProperties("UTF16_LE_bis.txt", BOM.UTF_16_LE, asciiContent = false, 1)
   // Files with BOM manually cleaned
-  val UTF8_with_BOM_manually_cleaned = testFileProperties("utf8_with_BOM_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
+  val UTF8_with_BOM_manually_cleaned = testFileProperties("UTF8_with_BOM_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
   val UTF16_BE_manually_cleaned = testFileProperties("UTF16_BE_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
   val UTF16_LE_manually_cleaned = testFileProperties("UTF16_LE_manually_cleaned.txt", BOM.ASCII, asciiContent = true, 1)
 
