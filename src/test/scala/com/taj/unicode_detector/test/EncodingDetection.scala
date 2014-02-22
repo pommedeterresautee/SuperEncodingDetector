@@ -199,11 +199,13 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         "the temp file should be deleted after the test" in {
-          val channel = new RandomAccessFile(tempFile, "rw").getChannel()
+          val file = new RandomAccessFile(tempFile, "rw")
+          val channel = file.getChannel
           val lock = channel.tryLock()
           lock should not be null
           lock.release()
           channel.close()
+          file.close()
           tempFile should (be('delete) and not be 'exists)
         }
       }
