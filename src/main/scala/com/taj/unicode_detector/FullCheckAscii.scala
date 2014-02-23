@@ -47,7 +47,7 @@ case class Result(nonMatchingCharPositionInFile: Option[Long], verbose: Boolean)
 case class FullCheckResult(nonMatchingBytePositionInFile: Option[Long], timeElapsed: Long) extends MessageAKKA
 
 object ParamAKKA {
-  val bufferSize: Int = 1024 * 1024 * 10
+  val bufferSize: Int = 1024
 
   /**
    * Compute the number of AKKA workers needed to process the file ideally.
@@ -122,8 +122,7 @@ class FileAnalyzer(totalLengthToAnalyze: Long, testToOperate: Array[Byte] => Int
 
   def receive = {
     case AnalyzeFile(path, verbose) =>
-      if (verbose) println("Start the processing...")
-      if (verbose) println(s"received a message from $sender")
+      if (verbose) println(s"Start the processing...\nReceived a message from $sender\nWill use $nbrOfWorkers Workers.")
       masterSender = sender
       if (!new File(path).exists()) throw new IllegalArgumentException(s"Provided file doesn't exist: $path")
       (0 to nbrOfWorkers - 1)
