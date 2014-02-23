@@ -102,11 +102,11 @@ object ParamAKKA {
   }
 }
 
-class UTF8FileAnalyzer(verbose: Boolean) extends FileAnalyzer(verbose:Boolean, testToOperate = ParamAKKA.checkUTF8)
+class UTF8FileAnalyzer(verbose: Boolean) extends FileAnalyzer(verbose: Boolean, testToOperate = ParamAKKA.checkUTF8)
 
-class ASCIIFileAnalyzer(verbose:Boolean) extends FileAnalyzer(verbose:Boolean, testToOperate = ParamAKKA.checkASCII)
+class ASCIIFileAnalyzer(verbose: Boolean) extends FileAnalyzer(verbose: Boolean, testToOperate = ParamAKKA.checkASCII)
 
-class FileAnalyzer(verbose:Boolean, testToOperate: Array[Byte] => Int) extends Actor {
+class FileAnalyzer(verbose: Boolean, testToOperate: Array[Byte] => Int) extends Actor {
 
   // Determine the minimum of Workers depending of the size of the file and the size of the buffer.
   // If we are working on a small file, start less workers, if it s a big file, use the number of cores.
@@ -122,9 +122,8 @@ class FileAnalyzer(verbose:Boolean, testToOperate: Array[Byte] => Int) extends A
   def receive = {
     case AnalyzeFile(path) =>
       startAnalyzeTime = System.currentTimeMillis
-      if (verbose) println(s"Start the processing @$startAnalyzeTime...\nReceived a message from $sender.\nWill use $nbrOfWorkers Workers.")
       val file = new File(path)
-      if(!file.exists()) {
+      if (!file.exists()) {
         context.system.shutdown()
         throw new IllegalStateException(s"File $path doesn't exist")
       }
@@ -132,6 +131,7 @@ class FileAnalyzer(verbose:Boolean, testToOperate: Array[Byte] => Int) extends A
       masterSender = sender
       nbrOfWorkers = ParamAKKA.numberOfWorkerRequired(totalLengthToAnalyze)
       lengthPerWorkerToAnalyze = totalLengthToAnalyze / nbrOfWorkers
+      if (verbose) println(s"Start the processing @$startAnalyzeTime...\nReceived a message from $sender.\nWill use $nbrOfWorkers Workers.")
       val router = context.actorOf(Props[BlockAnalyzer].withRouter(RoundRobinRouter(nbrOfWorkers)), name = "workerRouter")
       if (!new File(path).exists()) throw new IllegalArgumentException(s"Provided file doesn't exist: $path")
       (0 to nbrOfWorkers - 1)
@@ -166,7 +166,7 @@ private class BlockAnalyzer extends Actor {
     val randomAccessFile = new RandomAccessFile(path, "r")
     val buffer = new Array[Byte](bufferSize)
 
-    var searchResult:Option[(Int, Int)] = None
+    var searchResult: Option[(Int, Int)] = None
     try {
       randomAccessFile.seek(filePositionStartAnalyze)
       searchResult = Iterator
@@ -184,7 +184,7 @@ private class BlockAnalyzer extends Actor {
 
     searchResult match {
       case None => Result(None, verbose)
-      case Some((positionInArray:Int, arrayIndex:Int)) =>
+      case Some((positionInArray: Int, arrayIndex: Int)) =>
         Result(Some(filePositionStartAnalyze + arrayIndex * ParamAKKA.bufferSize + positionInArray - 1), verbose) // remove 1 because first position in a file is zero.
       case _ => throw new IllegalStateException("Search result should be a Tuple of two Integers.")
     }

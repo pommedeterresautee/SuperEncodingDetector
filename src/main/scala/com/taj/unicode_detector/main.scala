@@ -29,28 +29,59 @@
 
 package com.taj.unicode_detector
 
-import java.io.{FileOutputStream, FileInputStream, File}
-import akka.actor.{Props, ActorSystem}
+import java.io.{FileOutputStream, File}
+import akka.actor.ActorSystem
 import scala.concurrent.Await
 import akka.util.Timeout
-import akka.pattern.ask
+import org.rogach.scallop._
 
 object main extends App {
+
+
   val testResourcesFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}"
-  val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
-  val fileToTest = new File(encodedFileFolder, "utf8_without_BOM_bis.txt")
+  val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}UTF8_without_BOM.txt"
+  val arg = Array("--encoding", encodedFileFolder, "--verbose")
+  val help = Array("--help")
+  val opts = new ScallopConf(arg) {
+    banner( s"""
+SuperEncodingDetector will help you to manage text files in different encoding format.
+This application is good for working with the different Unicode version and ASCII character set but not to manage national specific code pages.
 
+* Encoding detection is based on the Byte Order Mark (BOM) of the file if it is available (UTF-8, UTF-16 BE/LE and the two versions of  UTF-32 BE/LE).
+* Encoding detection is based on a full scan of the text file if no BOM is available (UTF-8 and ASCII).
+* Conversion from Unicode to ASCII is done by replacing special characters by their ASCII equivalents if possible.
+* Merge different files encoded in a format including a BOM. The final file will include only one BOM.
 
-  val system = ActorSystem("EncodingDetector")
+Example: java -jar SuperEncodingDetector.jar --input .${File.separator}path1${File.separator}file1.txt .${File.separator}path2${File.separator}file2.txt .${File.separator}path3${File.separator}*.txt --detection
 
-  val master = system.actorOf(Props(new UTF8FileAnalyzer(verbose = true)), name = "FileAnalyzer")
+For usage see below:
+           """)
+    val filesExist: List[String] => Boolean = _.forall(new File(_).exists())
 
-  implicit val timeout = Timeout(30000)
+    val encoding = opt[List[String]]("encoding", descr = "Print the detected encoding of each file provided.", validate = filesExist)
+    val output = opt[String]("output", descr = "Path to the file where to save the result.", validate = !new File(_).exists())
+    val merge = opt[List[String]]("merge", descr = "Merge the files provided. Use output option to provide the destination folder.", validate = filesExist)
+    val verbose = toggle("verbose", descrYes = "Display lots of information during the process.", descrNo = "Display minimum during the process (same as not using this argument).", default = Some(false), prefix = "no-")
+    val help = opt[Boolean]("help", descr = "Show this message.")
+    val version = opt[Boolean]("version", noshort = true, descr = "Print program version.")
+    codependent(merge, output)
+    conflicts(merge, List(encoding, help, version))
+    conflicts(encoding, List(merge, help, version))
+  }
 
-  Await.result(master ? AnalyzeFile(fileToTest.getAbsolutePath), timeout.duration) match {
-    case FullCheckResult(isBlockASCII, time) ⇒
-    println(s"the result of the analyze is ${if (isBlockASCII.isEmpty) "UTF8" else s"non UTF8 at position ${isBlockASCII.get}"} and has been obtained in ${time / 1000}s")
-      system.shutdown() // stop all the actors
-    case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor")
+  val verboseOption = opts.verbose.get
+
+  val verbose = verboseOption match {
+    case Some(true) => true
+    case _ => false
+  }
+
+  val optionDetection = opts.encoding.get
+  optionDetection match {
+    case Some(list: List[String]) =>
+      list.map(path => (path, BOM.detect(path, verbose))).foreach {
+        case (file, encoding) => println(file + " ; " + encoding.charsetUsed.get.name())
+      }
+    case _ =>
   }
 }
