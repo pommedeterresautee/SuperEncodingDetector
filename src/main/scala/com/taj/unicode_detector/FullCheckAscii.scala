@@ -33,17 +33,18 @@ import java.io.{File, RandomAccessFile}
 
 import akka.actor._
 import akka.routing.RoundRobinRouter
+import scala.Option
 
 
 sealed trait MessageAKKA
 
 case class AnalyzeFile(path: String, verbose: Boolean) extends MessageAKKA
 
-case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Boolean, verbose: Boolean) extends MessageAKKA
+case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Int, verbose: Boolean) extends MessageAKKA
 
-case class Result(value: Boolean, verbose: Boolean) extends MessageAKKA
+case class Result(nonMatchingCharPositionInFile: Option[Long], verbose: Boolean) extends MessageAKKA
 
-case class FullCheckResult(isASCII: Boolean, timeElapsed: Long) extends MessageAKKA
+case class FullCheckResult(nonMatchingBytePositionInFile: Option[Long], timeElapsed: Long) extends MessageAKKA
 
 object ParamAKKA {
   val bufferSize: Int = 1024 * 1024 * 10
@@ -57,45 +58,45 @@ object ParamAKKA {
     .find(_ * bufferSize >= fileSize)
     .getOrElse(Runtime.getRuntime.availableProcessors)
 
-  val checkASCII: Array[Byte] => Boolean = _.forall(_.toInt >= 0)
+  val checkASCII: Array[Byte] => Int = _.indexWhere(_.toInt < 0)
 
-  val checkUTF8: Array[Byte] => Boolean = {
+  val checkUTF8: Array[Byte] => Int = {
     byteArray =>
       val realArraySize = byteArray.takeWhile(_ != 0).size
       var passBytesAlreadyMatched = 4 // the first 4 bytes of the block are passed in case they are related to a truncated unicode char from another block
     var passBytesMayMatch = -1 // if not yet the entire sequence, wait to advance 4 bytes to say if there is definitely no match
       (0 to (realArraySize - 4))
         .map(i => (byteArray(i), byteArray(i + 1), byteArray(i + 2), byteArray(i + 3)))
-        .forall {
+        .indexWhere {
         case (b1, b2, b3, b4) if b1.toInt >= 0 & b2.toInt >= 0 & b3.toInt >= 0 & b4.toInt >= 0 => // ASCII
           passBytesMayMatch = -1
           passBytesAlreadyMatched = 0
-          true
+          false
         case (b1, b2, b3, b4) if (b1 & 0xFF) >= 192 & (b2 & 0xFF) >= 128 =>
           passBytesMayMatch = -1
           passBytesAlreadyMatched = 1
-          true
+          false
         case (b1, b2, b3, b4) if (b1 & 0xFF) >= 224 & (b2 & 0xFF) >= 128 & (b3 & 0xFF) >= 128 =>
           passBytesMayMatch = -1
           passBytesAlreadyMatched = 2
-          true
+          false
         case (b1, b2, b3, b4) if (b1 & 0xFF) >= 240 & (b2 & 0xFF) >= 128 & (b3 & 0xFF) >= 128 & (b4 & 0xFF) >= 128 =>
           passBytesMayMatch = -1
           passBytesAlreadyMatched = 3
-          true
+          false
         case (b1, b2, b3, b4) =>
           if (passBytesAlreadyMatched > 0) {
             passBytesAlreadyMatched -= 1
-            true
+            false
           } else if (passBytesMayMatch == -1) {
             passBytesMayMatch = 3 // pass the check for the next 3 bytes to get a sequence of 4 bytes.
-            true
+            false
           } else if (passBytesMayMatch > 0) {
             passBytesMayMatch -= 1 // decrease the count waiting for the entire sequence
-            true
+            false
           } else {
             //println(s"$b1 + $b2 + $b3 + $b4") // for debug purpose
-            false
+            true
           }
       }
   }
@@ -105,7 +106,7 @@ class UTF8FileAnalyzer(totalLengthToAnalyze: Long) extends FileAnalyzer(totalLen
 
 class ASCIIFileAnalyzer(totalLengthToAnalyze: Long) extends FileAnalyzer(totalLengthToAnalyze: Long, testToOperate = ParamAKKA.checkASCII)
 
-class FileAnalyzer(totalLengthToAnalyze: Long, testToOperate: Array[Byte] => Boolean) extends Actor {
+class FileAnalyzer(totalLengthToAnalyze: Long, testToOperate: Array[Byte] => Int) extends Actor {
 
   // Determine the minimum of Workers depending of the size of the file and the size of the buffer.
   // If we are working on a small file, start less workers, if it s a big file, use the number of cores.
@@ -128,12 +129,12 @@ class FileAnalyzer(totalLengthToAnalyze: Long, testToOperate: Array[Byte] => Boo
       (0 to nbrOfWorkers - 1)
         .foreach(workerNbr =>
         router ! AnalyzeBlock(path, workerNbr * lengthPerWorkerToAnalyze, lengthPerWorkerToAnalyze, ParamAKKA.bufferSize, testToOperate, verbose))
-    case Result(isBlockASCII, verbose) =>
+    case Result(nonMatchingCharPositionInFile, verbose) =>
       resultReceived += 1
-      resultOfAnalyze &= isBlockASCII
+      resultOfAnalyze &= nonMatchingCharPositionInFile.isEmpty
       if (resultReceived == nbrOfWorkers || !resultOfAnalyze) {
         if (verbose) println(s"send back the final result to $sender")
-        masterSender ! FullCheckResult(isBlockASCII, System.currentTimeMillis() - startTime)
+        masterSender ! FullCheckResult(nonMatchingCharPositionInFile, System.currentTimeMillis() - startTime)
         context.stop(self) // stop this actor and its children
         if (verbose) println("Finished the Akka process")
       }
@@ -152,37 +153,32 @@ private class BlockAnalyzer extends Actor {
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
 
-  private def analyzeBlock(path: String, startRead: Long, lengthOfBlockToAnalyze: Long, bufferSize: Integer, testToOperate: Array[Byte] => Boolean, verbose: Boolean): Result = {
-    val limitToAnalyze = startRead + lengthOfBlockToAnalyze
+  private def analyzeBlock(path: String, filePositionStartAnalyze: Long, lengthOfBlockToAnalyze: Long, bufferSize: Integer, testToOperate: Array[Byte] => Int, verbose: Boolean): Result = {
+    val limitToAnalyze = filePositionStartAnalyze + lengthOfBlockToAnalyze
     val randomAccessFile = new RandomAccessFile(path, "r")
     val buffer = new Array[Byte](bufferSize)
 
-    var isASCII = false
+    var searchResult:Option[(Int, Int)] = None
     try {
-      randomAccessFile.seek(startRead)
-      isASCII = Iterator
+      randomAccessFile.seek(filePositionStartAnalyze)
+      searchResult = Iterator
         .continually(randomAccessFile.read(buffer))
         .takeWhile(c => c != -1
         && randomAccessFile.getFilePointer <= limitToAnalyze + bufferSize) // stop when the end of file || block is reached
         .map(_ => buffer) // buffer
-        .forall(testToOperate)
+        .map(testToOperate)
+        .zipWithIndex
+        .find(_._1 != -1)
+
     } finally {
       randomAccessFile.close()
     }
-    Result(isASCII, verbose)
+
+    searchResult match {
+      case None => Result(None, verbose)
+      case Some((positionInArray:Int, arrayIndex:Int)) =>
+        Result(Some(filePositionStartAnalyze + arrayIndex * ParamAKKA.bufferSize + positionInArray - 1), verbose) // remove 1 because first position in a file is zero.
+      case _ => throw new IllegalStateException("Search result should be a Tuple of two Integers.")
+    }
   }
 }
-
-//TODO find the location of the error if one is found
-/*
-* isASCII = Iterator
-        .continually(randomAccessFile.read(buffer))
-        .takeWhile(c => c != -1
-        && randomAccessFile.getFilePointer <= limitToAnalyze + main.bufferSize) // stop when the end of file || block is reached
-        .zipWithIndex
-        .flatMap{case(_, bufferCounter) => buffer.map((_, bufferCounter))}
-        .zipWithIndex
-        .map{case((byte, bufferCounter), arrayCounter) => (byte, bufferCounter, arrayCounter)}
-        .find{case(testedByte, bufferCounter, arrayCounter) => testedByte < 0 && testedByte > 127}
-* */
-

@@ -90,12 +90,14 @@ object BOM {
         val masterASCII = system.actorOf(Props(new ASCIIFileAnalyzer(bytesToRead)), name = "ASCIIFileAnalyzer")
         implicit val timeout = Timeout(20000)
         Await.result(masterASCII ? AnalyzeFile(file, verbose), timeout.duration) match {
-          case FullCheckResult(true, _) => result = ASCII
-          case FullCheckResult(false, _) =>
+          case FullCheckResult(None, _) => result = ASCII
+          case FullCheckResult(Some(positionNonASCIIByte), _) =>
             val masterUTF8 = system.actorOf(Props(new UTF8FileAnalyzer(bytesToRead)), name = "UTF8FileAnalyzer")
             Await.result(masterUTF8 ? AnalyzeFile(file, verbose), timeout.duration) match {
-              case FullCheckResult(true, _) => result = UTF8NoBOM
-              case FullCheckResult(false, _) => result = UnknownEncoding
+              case FullCheckResult(None, _) => result = UTF8NoBOM
+              case FullCheckResult(Some(positionNonUTF8Byte), _) =>
+                if(verbose) println(s"The non matching byte is located at position $positionNonUTF8Byte")
+                result = UnknownEncoding
               case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during ASCII check")
             }
           case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during UTF8 no BOM check")
