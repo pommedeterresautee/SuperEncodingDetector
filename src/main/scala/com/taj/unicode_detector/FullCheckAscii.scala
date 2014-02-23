@@ -38,7 +38,7 @@ import scala.Option
 
 sealed trait MessageAKKA
 
-case class AnalyzeFile(path: String, verbose: Boolean) extends MessageAKKA
+case class AnalyzeFile(path: String) extends MessageAKKA
 
 case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Int, verbose: Boolean) extends MessageAKKA
 
@@ -102,40 +102,49 @@ object ParamAKKA {
   }
 }
 
-class UTF8FileAnalyzer(totalLengthToAnalyze: Long) extends FileAnalyzer(totalLengthToAnalyze: Long, testToOperate = ParamAKKA.checkUTF8)
+class UTF8FileAnalyzer(verbose: Boolean) extends FileAnalyzer(verbose:Boolean, testToOperate = ParamAKKA.checkUTF8)
 
-class ASCIIFileAnalyzer(totalLengthToAnalyze: Long) extends FileAnalyzer(totalLengthToAnalyze: Long, testToOperate = ParamAKKA.checkASCII)
+class ASCIIFileAnalyzer(verbose:Boolean) extends FileAnalyzer(verbose:Boolean, testToOperate = ParamAKKA.checkASCII)
 
-class FileAnalyzer(totalLengthToAnalyze: Long, testToOperate: Array[Byte] => Int) extends Actor {
+class FileAnalyzer(verbose:Boolean, testToOperate: Array[Byte] => Int) extends Actor {
 
   // Determine the minimum of Workers depending of the size of the file and the size of the buffer.
   // If we are working on a small file, start less workers, if it s a big file, use the number of cores.
-  val nbrOfWorkers = ParamAKKA.numberOfWorkerRequired(totalLengthToAnalyze)
+
+  var nbrOfWorkers = 0
   var masterSender: ActorRef = _
-  val startTime = System.currentTimeMillis
-  // to compute time elapsed to give a result
-  val router = context.actorOf(Props[BlockAnalyzer].withRouter(RoundRobinRouter(nbrOfWorkers)), name = "workerRouter")
-  val lengthPerWorkerToAnalyze = totalLengthToAnalyze / nbrOfWorkers
+  var startAnalyzeTime = 0l
+  var lengthPerWorkerToAnalyze = 0l
   var resultOfAnalyze = true
   // init
   var resultReceived = 0 // init
 
   def receive = {
-    case AnalyzeFile(path, verbose) =>
-      if (verbose) println(s"Start the processing...\nReceived a message from $sender\nWill use $nbrOfWorkers Workers.")
+    case AnalyzeFile(path) =>
+      startAnalyzeTime = System.currentTimeMillis
+      if (verbose) println(s"Start the processing @$startAnalyzeTime...\nReceived a message from $sender.\nWill use $nbrOfWorkers Workers.")
+      val file = new File(path)
+      if(!file.exists()) {
+        context.system.shutdown()
+        throw new IllegalStateException(s"File $path doesn't exist")
+      }
+      val totalLengthToAnalyze = file.length()
       masterSender = sender
+      nbrOfWorkers = ParamAKKA.numberOfWorkerRequired(totalLengthToAnalyze)
+      lengthPerWorkerToAnalyze = totalLengthToAnalyze / nbrOfWorkers
+      val router = context.actorOf(Props[BlockAnalyzer].withRouter(RoundRobinRouter(nbrOfWorkers)), name = "workerRouter")
       if (!new File(path).exists()) throw new IllegalArgumentException(s"Provided file doesn't exist: $path")
       (0 to nbrOfWorkers - 1)
         .foreach(workerNbr =>
         router ! AnalyzeBlock(path, workerNbr * lengthPerWorkerToAnalyze, lengthPerWorkerToAnalyze, ParamAKKA.bufferSize, testToOperate, verbose))
-    case Result(nonMatchingCharPositionInFile, verbose) =>
+    case Result(nonMatchingCharPositionInFile, verboseActivated) =>
       resultReceived += 1
       resultOfAnalyze &= nonMatchingCharPositionInFile.isEmpty
       if (resultReceived == nbrOfWorkers || !resultOfAnalyze) {
-        if (verbose) println(s"send back the final result to $sender")
-        masterSender ! FullCheckResult(nonMatchingCharPositionInFile, System.currentTimeMillis() - startTime)
+        if (verboseActivated) println(s"send back the final result to $sender")
+        masterSender ! FullCheckResult(nonMatchingCharPositionInFile, System.currentTimeMillis() - startAnalyzeTime)
         context.stop(self) // stop this actor and its children
-        if (verbose) println("Finished the Akka process")
+        if (verboseActivated) println("Finished the Akka process")
       }
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }

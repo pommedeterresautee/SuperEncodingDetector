@@ -87,13 +87,13 @@ object BOM {
       case _ => // No BOM detected
         var result: BOMFileEncoding = null
         val system = ActorSystem("FileIdentification")
-        val masterASCII = system.actorOf(Props(new ASCIIFileAnalyzer(bytesToRead)), name = "ASCIIFileAnalyzer")
+        val masterASCII = system.actorOf(Props(new ASCIIFileAnalyzer(verbose)), name = "ASCIIFileAnalyzer")
         implicit val timeout = Timeout(20000)
-        Await.result(masterASCII ? AnalyzeFile(file, verbose), timeout.duration) match {
+        Await.result(masterASCII ? AnalyzeFile(file), timeout.duration) match {
           case FullCheckResult(None, _) => result = ASCII
           case FullCheckResult(Some(positionNonASCIIByte), _) =>
-            val masterUTF8 = system.actorOf(Props(new UTF8FileAnalyzer(bytesToRead)), name = "UTF8FileAnalyzer")
-            Await.result(masterUTF8 ? AnalyzeFile(file, verbose), timeout.duration) match {
+            val masterUTF8 = system.actorOf(Props(new UTF8FileAnalyzer(verbose)), name = "UTF8FileAnalyzer")
+            Await.result(masterUTF8 ? AnalyzeFile(file), timeout.duration) match {
               case FullCheckResult(None, _) => result = UTF8NoBOM
               case FullCheckResult(Some(positionNonUTF8Byte), _) =>
                 if(verbose) println(s"The non matching byte is located at position $positionNonUTF8Byte")
@@ -151,7 +151,6 @@ object BOM {
     val bomFrom = detect(from, verbose)
     val fileTo = new File(to)
     if (fileTo.exists()) fileTo.delete()
-    Thread.sleep(100l)
     if (fileTo.exists()) throw new IllegalStateException(s"File $to can't be deleted.")
     val output = new FileOutputStream(fileTo)
 

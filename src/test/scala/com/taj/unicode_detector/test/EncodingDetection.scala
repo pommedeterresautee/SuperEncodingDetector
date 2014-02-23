@@ -116,9 +116,9 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         s"should be detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
-          implicit val timeout = Timeout(20000)
-          val master = system.actorOf(Props(new ASCIIFileAnalyzer(fileSize)), name = s"ActorOf_${fileToTest.fileName}")
-          val resultOfTest = Await.result(master ? AnalyzeFile(file.getAbsolutePath, verbose = false), timeout.duration).asInstanceOf[FullCheckResult]
+          implicit val timeout = Timeout(2000)
+          val master = system.actorOf(Props(new ASCIIFileAnalyzer(verbose = false)), name = s"ActorOf_${fileToTest.fileName}")
+          val resultOfTest = Await.result(master ? AnalyzeFile(file.getAbsolutePath), timeout.duration).asInstanceOf[FullCheckResult]
           resultOfTest.nonMatchingBytePositionInFile.isEmpty should equal(fileToTest.isASCIIContent)
         }
 
@@ -145,8 +145,8 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
 
         s"should be not detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
           implicit val timeout = Timeout(20000)
-          val master = system.actorOf(Props(new ASCIIFileAnalyzer(fileSize)), name = s"ActorOf_${fileToTest.fileName}")
-          val resultOfTest = Await.result(master ? AnalyzeFile(file.getAbsolutePath, verbose = false), timeout.duration).asInstanceOf[FullCheckResult]
+          val master = system.actorOf(Props(new ASCIIFileAnalyzer(verbose = false)), name = s"ActorOf_${fileToTest.fileName}")
+          val resultOfTest = Await.result(master ? AnalyzeFile(file.getAbsolutePath), timeout.duration).asInstanceOf[FullCheckResult]
           if(resultOfTest.nonMatchingBytePositionInFile.isDefined) println("position: " + resultOfTest.nonMatchingBytePositionInFile.get)
           resultOfTest.nonMatchingBytePositionInFile.isEmpty should not equal fileToTest.isASCIIContent
         }

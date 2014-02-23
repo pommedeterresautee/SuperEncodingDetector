@@ -29,7 +29,7 @@
 
 package com.taj.unicode_detector
 
-import java.io.File
+import java.io.{FileOutputStream, FileInputStream, File}
 import akka.actor.{Props, ActorSystem}
 import scala.concurrent.Await
 import akka.util.Timeout
@@ -40,19 +40,16 @@ object main extends App {
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
   val fileToTest = new File(encodedFileFolder, "utf8_without_BOM_bis.txt")
 
-  val percentageToAnalyze = 100
 
-  val bytesToRead = fileToTest.length() * percentageToAnalyze / 100
+  val system = ActorSystem("EncodingDetector")
 
-  val system = ActorSystem("AsciiDetector")
-
-  val master = system.actorOf(Props(new UTF8FileAnalyzer(bytesToRead)), name = "FileAnalyzer")
+  val master = system.actorOf(Props(new UTF8FileAnalyzer(verbose = true)), name = "FileAnalyzer")
 
   implicit val timeout = Timeout(30000)
 
-  Await.result(master ? AnalyzeFile(fileToTest.getAbsolutePath, verbose = true), timeout.duration) match {
+  Await.result(master ? AnalyzeFile(fileToTest.getAbsolutePath), timeout.duration) match {
     case FullCheckResult(isBlockASCII, time) ⇒
-    println(s"the result of the analyze is ${if (isBlockASCII) "ascii" else "non ascii"} and has been obtained in ${time / 1000}s")
+    println(s"the result of the analyze is ${if (isBlockASCII.isEmpty) "UTF8" else s"non UTF8 at position ${isBlockASCII.get}"} and has been obtained in ${time / 1000}s")
       system.shutdown() // stop all the actors
     case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor")
   }
