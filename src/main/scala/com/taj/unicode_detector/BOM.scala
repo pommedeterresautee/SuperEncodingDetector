@@ -96,7 +96,7 @@ object BOM {
             Await.result(masterUTF8 ? AnalyzeFile(file), timeout.duration) match {
               case FullCheckResult(None, _) => result = UTF8NoBOM
               case FullCheckResult(Some(positionNonUTF8Byte), _) =>
-                if(verbose) println(s"The non matching byte is located at position $positionNonUTF8Byte")
+                if (verbose) println(s"The non matching byte is located at position $positionNonUTF8Byte")
                 result = UnknownEncoding
               case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during ASCII check")
             }
@@ -111,17 +111,17 @@ object BOM {
   /**
    * Compare files given in parameter to the BOM in parameters to determine if they are all the same.
    * @param verbose print some helpful messages.
-   * @param bom the supposed BOM
    * @param paths paths to the files to compare.
    * @return true if the encoding is the same everywhere.
    */
-  def isSameBOM(verbose: Boolean, bom: BOMFileEncoding, paths: String*): Boolean = {
+  def isSameBOM(verbose: Boolean, paths: String*): Boolean = {
     if (paths.size < 2) throw new IllegalArgumentException(s"Not enough files to compare (${paths.size})")
-    paths.forall {
+    val bom: BOMFileEncoding = detect(paths.head, verbose)
+    paths.tail.forall {
       path: String =>
         val detectedBOM = detect(path, verbose)
         val same = bom.equals(detectedBOM)
-        if (!same && verbose) println(s"The first file [${paths(0)}] is encoded as ${bom.charsetUsed} but the file [$path] is encoded as ${detectedBOM.charsetUsed}.")
+        if (!same && verbose) println(s"The first file [${paths.head}] is encoded as ${bom.charsetUsed} but the file [$path] is encoded as ${detectedBOM.charsetUsed}.")
         same
     }
   }

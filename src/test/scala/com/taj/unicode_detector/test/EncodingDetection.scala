@@ -147,7 +147,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
           implicit val timeout = Timeout(20000)
           val master = system.actorOf(Props(new ASCIIFileAnalyzer(verbose = false)), name = s"ActorOf_${fileToTest.fileName}")
           val resultOfTest = Await.result(master ? AnalyzeFile(file.getAbsolutePath), timeout.duration).asInstanceOf[FullCheckResult]
-          if(resultOfTest.nonMatchingBytePositionInFile.isDefined) println("position: " + resultOfTest.nonMatchingBytePositionInFile.get)
+          if (resultOfTest.nonMatchingBytePositionInFile.isDefined) println("position: " + resultOfTest.nonMatchingBytePositionInFile.get)
           resultOfTest.nonMatchingBytePositionInFile.isEmpty should not equal fileToTest.isASCIIContent
         }
 
@@ -169,7 +169,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
 
       s"${first.fileName} and ${second.fileName}" must {
         "have the same detected BOM" in {
-          val same = BOM.isSameBOM(true, first.encoding, firstPath, secondPath)
+          val same = BOM.isSameBOM(true, firstPath, secondPath)
           same should be(true)
         }
 
@@ -185,7 +185,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
     case (file1, file2) =>
       s"${file1.fileName} and ${file2.fileName}" must {
         "have different detected BOM" in {
-          val same = BOM.isSameBOM(false, file1.encoding, encodedFileFolder + file1.fileName, encodedFileFolder + file2.fileName)
+          val same = BOM.isSameBOM(false, encodedFileFolder + file1.fileName, encodedFileFolder + file2.fileName)
           same should be(false)
         }
       }

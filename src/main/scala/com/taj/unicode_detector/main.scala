@@ -29,20 +29,16 @@
 
 package com.taj.unicode_detector
 
-import java.io.{FileOutputStream, File}
-import akka.actor.ActorSystem
-import scala.concurrent.Await
-import akka.util.Timeout
+import java.io.File
 import org.rogach.scallop._
 
 object main extends App {
-
 
   val testResourcesFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}"
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}UTF8_without_BOM.txt"
   val arg = Array("--encoding", encodedFileFolder, "--verbose")
   val help = Array("--help")
-  val opts = new ScallopConf(arg) {
+  val opts = new ScallopConf(args) {
     banner( s"""
 SuperEncodingDetector will help you to manage text files in different encoding format.
 This application is good for working with the different Unicode version and ASCII character set but not to manage national specific code pages.
@@ -59,29 +55,38 @@ For usage see below:
     val filesExist: List[String] => Boolean = _.forall(new File(_).exists())
 
     val encoding = opt[List[String]]("encoding", descr = "Print the detected encoding of each file provided.", validate = filesExist)
+    val removeBOM = opt[String]("removeBOM", descr = "Remove the Byte Order Mark from a file. Use output option to provide the destination folder.", validate = new File(_).exists())
     val output = opt[String]("output", descr = "Path to the file where to save the result.", validate = !new File(_).exists())
     val merge = opt[List[String]]("merge", descr = "Merge the files provided. Use output option to provide the destination folder.", validate = filesExist)
     val verbose = toggle("verbose", descrYes = "Display lots of information during the process.", descrNo = "Display minimum during the process (same as not using this argument).", default = Some(false), prefix = "no-")
     val help = opt[Boolean]("help", descr = "Show this message.")
-    val version = opt[Boolean]("version", noshort = true, descr = "Print program version.")
+    // val version = opt[Boolean]("version", noshort = true, descr = "Print program version.")
     codependent(merge, output)
-    conflicts(merge, List(encoding, help, version))
-    conflicts(encoding, List(merge, help, version))
+    conflicts(merge, List(encoding, help /*, version*/))
+    conflicts(encoding, List(merge, help /*, version*/))
   }
 
   val verboseOption = opts.verbose.get
-
   val verbose = verboseOption match {
     case Some(true) => true
     case _ => false
   }
 
+
   val optionDetection = opts.encoding.get
   optionDetection match {
-    case Some(list: List[String]) =>
+    case Some(list) =>
       list.map(path => (path, BOM.detect(path, verbose))).foreach {
-        case (file, encoding) => println(file + " ; " + encoding.charsetUsed.get.name())
+        case (file, encoding) => println(file + " ; " + encoding.charsetUsed.map(_.name()))
       }
+    case _ =>
+  }
+
+  val optionMerge = opts.merge.get
+  optionMerge match {
+    case Some(list) =>
+      if (!BOM.isSameBOM(true, list: _*)) System.exit(1)
+      BOM.mergeFilesWithoutBom(verbose, opts.output.get.get, list: _*)
     case _ =>
   }
 }
