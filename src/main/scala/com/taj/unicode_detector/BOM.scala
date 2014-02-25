@@ -36,6 +36,7 @@ import akka.actor.{Props, ActorSystem}
 import akka.util.Timeout
 import scala.concurrent.Await
 import akka.pattern.ask
+import java.util.concurrent.TimeUnit
 
 /**
  * Contain properties of each BOM.
@@ -88,7 +89,7 @@ object BOM {
         var result: BOMFileEncoding = null
         val system = ActorSystem("FileIdentification")
         val masterASCII = system.actorOf(Props(new ASCIIFileAnalyzer(verbose)), name = "ASCIIFileAnalyzer")
-        implicit val timeout = Timeout(20000)
+        implicit val timeout = Timeout(2, TimeUnit.MINUTES)
         Await.result(masterASCII ? AnalyzeFile(file), timeout.duration) match {
           case FullCheckResult(None, _) => result = ASCII
           case FullCheckResult(Some(positionNonASCIIByte), _) =>
@@ -96,7 +97,7 @@ object BOM {
             Await.result(masterUTF8 ? AnalyzeFile(file), timeout.duration) match {
               case FullCheckResult(None, _) => result = UTF8NoBOM
               case FullCheckResult(Some(positionNonUTF8Byte), _) =>
-                if (verbose) println(s"The non matching byte is located at position $positionNonUTF8Byte")
+                if (verbose) println(s"The first non matching byte is located at position $positionNonUTF8Byte in the file $file")
                 result = UnknownEncoding
               case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during ASCII check")
             }

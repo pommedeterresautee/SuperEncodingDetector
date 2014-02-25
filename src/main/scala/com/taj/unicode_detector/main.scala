@@ -36,9 +36,11 @@ object main extends App {
 
   val testResourcesFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}"
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}UTF8_without_BOM.txt"
-  val arg = Array("--encoding", encodedFileFolder, "--verbose")
+
+  val FEC = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\FEC.txt"
+  val arg = Array("--encoding", FEC, "--verbose")
   val help = Array("--help")
-  val opts = new ScallopConf(args) {
+  val opts = new ScallopConf(arg) {
     banner( s"""
 SuperEncodingDetector will help you to manage text files in different encoding format.
 This application is good for working with the different Unicode version and ASCII character set but not to manage national specific code pages.

@@ -42,6 +42,7 @@ import org.apache.commons.codec.digest.DigestUtils
 import scala.concurrent.Await
 import akka.util.Timeout
 import akka.pattern.ask
+import java.util.concurrent.TimeUnit
 
 /**
  * A case class to contain the parameters of a test file.
@@ -116,7 +117,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         s"should be detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
-          implicit val timeout = Timeout(2000)
+          implicit val timeout = Timeout(5, TimeUnit.SECONDS)
           val master = system.actorOf(Props(new ASCIIFileAnalyzer(verbose = false)), name = s"ActorOf_${fileToTest.fileName}")
           val resultOfTest = Await.result(master ? AnalyzeFile(file.getAbsolutePath), timeout.duration).asInstanceOf[FullCheckResult]
           resultOfTest.nonMatchingBytePositionInFile.isEmpty should equal(fileToTest.isASCIIContent)

@@ -50,13 +50,29 @@ object ParamAKKA {
   val bufferSize: Int = 1024
 
   /**
-   * Compute the number of AKKA workers needed to process the file ideally.
+   * Size of each part sent to each Actor
+   * Speed test for different parameters based on a 400 Mb file (time in ms).
+   * Size   Time
+   * 2   Kb 151 021
+   * 1   Mb  25 205
+   * 10  Mb  22 207
+   * 20  Mb  21 384 <- Best
+   * 70  Mb  22 691
+   * 100 Mb  23 671
+   */
+  val sizeOfaPartToAnalyze = 1024 * 1024 * 20
+
+  /**
+   * Compute the number of AKKA workers needed to process the file.
+   * Computation based on the size of the file and the size of the segments to analyze.
+   * If we are working on a small file, start less workers, if it s a big file, use the number of processor cores.
    * @param fileSize size of the file to process
    * @return the number of workers.
    */
-  def numberOfWorkerRequired(fileSize: Long) = (1 to Runtime.getRuntime.availableProcessors)
-    .find(_ * bufferSize >= fileSize)
-    .getOrElse(Runtime.getRuntime.availableProcessors)
+  def numberOfWorkerRequired(fileSize: Long) =
+    (1 to Runtime.getRuntime.availableProcessors)
+      .find(_ * sizeOfaPartToAnalyze >= fileSize)
+      .getOrElse(Runtime.getRuntime.availableProcessors)
 
   val checkASCII: Array[Byte] => Int = _.indexWhere(_.toInt < 0)
 
@@ -107,15 +123,11 @@ class UTF8FileAnalyzer(verbose: Boolean) extends FileAnalyzer(verbose: Boolean, 
 class ASCIIFileAnalyzer(verbose: Boolean) extends FileAnalyzer(verbose: Boolean, testToOperate = ParamAKKA.checkASCII)
 
 class FileAnalyzer(verbose: Boolean, testToOperate: Array[Byte] => Int) extends Actor {
-
-  // Determine the minimum of Workers depending of the size of the file and the size of the buffer.
-  // If we are working on a small file, start less workers, if it s a big file, use the number of cores.
-
   var nbrOfWorkers = 0
   var masterSender: ActorRef = _
   var startAnalyzeTime = 0l
-  var lengthPerWorkerToAnalyze = 0l
-  var resultOfAnalyze = true
+  var numberOfPartToAnalyze = 0
+  var fileMatchExpectedEncoding = true
   // init
   var resultReceived = 0 // init
 
@@ -125,27 +137,40 @@ class FileAnalyzer(verbose: Boolean, testToOperate: Array[Byte] => Int) extends 
       val file = new File(path)
       if (!file.exists()) {
         context.system.shutdown()
-        throw new IllegalStateException(s"File $path doesn't exist")
+        throw new IllegalArgumentException(s"File $path doesn't exist")
       }
+
       val totalLengthToAnalyze = file.length()
       masterSender = sender
+
+      numberOfPartToAnalyze = (totalLengthToAnalyze / ParamAKKA.sizeOfaPartToAnalyze).toInt match {
+        case 0 => 1
+        case count: Int => count
+      }
+
       nbrOfWorkers = ParamAKKA.numberOfWorkerRequired(totalLengthToAnalyze)
-      lengthPerWorkerToAnalyze = totalLengthToAnalyze / nbrOfWorkers
-      if (verbose) println(s"Start the processing @$startAnalyzeTime...\nReceived a message from $sender.\nWill use $nbrOfWorkers Workers.")
-      val router = context.actorOf(Props[BlockAnalyzer].withRouter(RoundRobinRouter(nbrOfWorkers)), name = "workerRouter")
-      if (!new File(path).exists()) throw new IllegalArgumentException(s"Provided file doesn't exist: $path")
-      (0 to nbrOfWorkers - 1)
-        .foreach(workerNbr =>
-        router ! AnalyzeBlock(path, workerNbr * lengthPerWorkerToAnalyze, lengthPerWorkerToAnalyze, ParamAKKA.bufferSize, testToOperate, verbose))
+
+      if (verbose) println(
+        s"Start processing @$startAnalyzeTime\n" +
+          s"Current actor [$self]\n" +
+          s"Received a message from $masterSender.\n" +
+          s"Will use $nbrOfWorkers Workers.")
+      val router = context.actorOf(Props[BlockAnalyzer].withRouter(RoundRobinRouter(nrOfInstances = nbrOfWorkers)), name = "workerRouter")
+
+      (0 to numberOfPartToAnalyze - 1)
+        .foreach(partNumber =>
+        router ! AnalyzeBlock(path, partNumber * ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.bufferSize, testToOperate, verbose))
+
     case Result(nonMatchingCharPositionInFile, verboseActivated) =>
       resultReceived += 1
-      resultOfAnalyze &= nonMatchingCharPositionInFile.isEmpty
-      if (resultReceived == nbrOfWorkers || !resultOfAnalyze) {
-        if (verboseActivated) println(s"send back the final result to $sender")
+      fileMatchExpectedEncoding &= nonMatchingCharPositionInFile.isEmpty
+      if (resultReceived == numberOfPartToAnalyze || !fileMatchExpectedEncoding) {
+        if (verboseActivated) println(s"send back the final result to $masterSender")
         masterSender ! FullCheckResult(nonMatchingCharPositionInFile, System.currentTimeMillis() - startAnalyzeTime)
         context.stop(self) // stop this actor and its children
-        if (verboseActivated) println("Finished the Akka process")
+        if (verboseActivated) println(s"Finished the Akka process in ${System.currentTimeMillis() - startAnalyzeTime}")
       }
+
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
 }
@@ -155,9 +180,11 @@ private class BlockAnalyzer extends Actor {
   def receive = {
     case AnalyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate, verbose) =>
       val ID = startRead / length
-      if (verbose) println(s"Start analyze of block $ID [$startRead - ${startRead + length}[")
+      if (verbose) println(s"Start analyze of block $ID [$startRead - ${startRead + length}[\n" +
+        s"Ref [$self]")
       sender ! analyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate, verbose)
-      if (verbose) println(s"Stop analyze of block $ID")
+      if (verbose) println(s"Stop analyze of block $ID" +
+        s"\nRef [$self]")
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
 
