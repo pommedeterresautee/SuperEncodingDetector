@@ -32,17 +32,19 @@ package com.taj.unicode_detector
 import java.io.{File, RandomAccessFile}
 
 import akka.actor._
-import akka.routing.RoundRobinRouter
+import akka.routing.{Broadcast, RoundRobinRouter}
 import scala.Option
+import akka.util.Timeout
+import java.util.concurrent.TimeUnit
 
 
 sealed trait MessageAKKA
 
-case class AnalyzeFile(path: String) extends MessageAKKA
+case class InitAnalyzeFile() extends MessageAKKA
 
 case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Int, verbose: Boolean) extends MessageAKKA
 
-case class Result(nonMatchingCharPositionInFile: Option[Long], verbose: Boolean) extends MessageAKKA
+case class Result(actor: ActorRef, pathOfTheFileAnalyzed: String, nonMatchingCharPositionInFile: Option[Long], verbose: Boolean) extends MessageAKKA
 
 case class FullCheckResult(nonMatchingBytePositionInFile: Option[Long], timeElapsed: Long) extends MessageAKKA
 
@@ -50,7 +52,7 @@ object ParamAKKA {
   val bufferSize: Int = 1024
 
   /**
-   * Size of each part sent to each Actor
+   * Size of each part sent to each Actor.
    * Speed test for different parameters based on a 400 Mb file (time in ms).
    * Size   Time
    * 2   Kb 151 021
@@ -111,67 +113,68 @@ object ParamAKKA {
             passBytesMayMatch -= 1 // decrease the count waiting for the entire sequence
             false
           } else {
-            //println(s"$b1 + $b2 + $b3 + $b4") // for debug purpose
             true
           }
       }
   }
 }
 
-class UTF8FileAnalyzer(verbose: Boolean) extends FileAnalyzer(verbose: Boolean, testToOperate = ParamAKKA.checkUTF8)
+class UTF8FileAnalyzer(verbose: Boolean, path: String) extends FileAnalyzer(verbose: Boolean, path: String, testToOperate = ParamAKKA.checkUTF8)
 
-class ASCIIFileAnalyzer(verbose: Boolean) extends FileAnalyzer(verbose: Boolean, testToOperate = ParamAKKA.checkASCII)
+class ASCIIFileAnalyzer(verbose: Boolean, path: String) extends FileAnalyzer(verbose: Boolean, path: String, testToOperate = ParamAKKA.checkASCII)
 
-class FileAnalyzer(verbose: Boolean, testToOperate: Array[Byte] => Int) extends Actor {
-  var nbrOfWorkers = 0
-  var masterSender: ActorRef = _
+class FileAnalyzer(verbose: Boolean, path: String, testToOperate: Array[Byte] => Int) extends Actor {
+  val totalLengthToAnalyze = new File(path).length()
+  val numberOfPartToAnalyze = (totalLengthToAnalyze / ParamAKKA.sizeOfaPartToAnalyze).toInt match {
+    case 0 => 1
+    case count: Int => count
+  }
+
+  val nbrOfWorkers = ParamAKKA.numberOfWorkerRequired(totalLengthToAnalyze)
+  val routerBlockAnalyzer: ActorRef = context.actorOf(Props[BlockAnalyzer].withRouter(RoundRobinRouter(nbrOfWorkers)), name = s"Router_${self.path.name.charAt(0)}")
+  var masterSender: Option[ActorRef] = None
   var startAnalyzeTime = 0l
-  var numberOfPartToAnalyze = 0
-  var fileMatchExpectedEncoding = true
-  // init
-  var resultReceived = 0 // init
+  var resultReceived = 0
 
   def receive = {
-    case AnalyzeFile(path) =>
+    case InitAnalyzeFile() =>
       startAnalyzeTime = System.currentTimeMillis
-      val file = new File(path)
-      if (!file.exists()) {
-        context.system.shutdown()
-        throw new IllegalArgumentException(s"File $path doesn't exist")
-      }
-
-      val totalLengthToAnalyze = file.length()
-      masterSender = sender
-
-      numberOfPartToAnalyze = (totalLengthToAnalyze / ParamAKKA.sizeOfaPartToAnalyze).toInt match {
-        case 0 => 1
-        case count: Int => count
-      }
-
-      nbrOfWorkers = ParamAKKA.numberOfWorkerRequired(totalLengthToAnalyze)
+      masterSender = Some(sender)
 
       if (verbose) println(
         s"Start processing @$startAnalyzeTime\n" +
-          s"Current actor [$self]\n" +
-          s"Received a message from $masterSender.\n" +
+          s"Current actor [${self.path}]\n" +
+          s"Received a message from ${sender.path}.\n" +
           s"Will use $nbrOfWorkers Workers.")
-      val router = context.actorOf(Props[BlockAnalyzer].withRouter(RoundRobinRouter(nrOfInstances = nbrOfWorkers)), name = "workerRouter")
 
-      (0 to numberOfPartToAnalyze - 1)
+      // Initialization of the workers
+      (0 to nbrOfWorkers - 1)
         .foreach(partNumber =>
-        router ! AnalyzeBlock(path, partNumber * ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.bufferSize, testToOperate, verbose))
+        routerBlockAnalyzer ! AnalyzeBlock(path, partNumber * ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.bufferSize, testToOperate, verbose))
 
-    case Result(nonMatchingCharPositionInFile, verboseActivated) =>
+      println(s"The sender is ${sender.path} but the parent is ${context.parent.path}")
+
+    case Result(actor, filePath, nonMatchingCharPositionInFile, verboseActivated) =>
       resultReceived += 1
-      fileMatchExpectedEncoding &= nonMatchingCharPositionInFile.isEmpty
-      if (resultReceived == numberOfPartToAnalyze || !fileMatchExpectedEncoding) {
-        if (verboseActivated) println(s"send back the final result to $masterSender")
-        masterSender ! FullCheckResult(nonMatchingCharPositionInFile, System.currentTimeMillis() - startAnalyzeTime)
-        context.stop(self) // stop this actor and its children
-        if (verboseActivated) println(s"Finished the Akka process in ${System.currentTimeMillis() - startAnalyzeTime}")
-      }
 
+      masterSender match {
+        case None =>
+        case Some(masterActor) if resultReceived == numberOfPartToAnalyze || !nonMatchingCharPositionInFile.isEmpty =>
+          masterActor ! FullCheckResult(nonMatchingCharPositionInFile, System.currentTimeMillis() - startAnalyzeTime)
+          implicit val timeout = Timeout(2, TimeUnit.MINUTES)
+          masterSender = None
+          routerBlockAnalyzer ! Broadcast(PoisonPill)
+          //Await.result(masterActor ? PoisonPill, timeout.duration)
+          if (verboseActivated) println(s"*** Finished Actor ${self.path} process in ${System.currentTimeMillis() - startAnalyzeTime} ***")
+        case Some(masterActor) =>
+          actor ! AnalyzeBlock(filePath, resultReceived * ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.bufferSize, testToOperate, verbose)
+      }
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
+  }
+
+  override def postStop(): Unit = {
+    println(s"*** Stop Actor ${self.path} ***")
+    super.postStop()
   }
 }
 
@@ -179,12 +182,13 @@ private class BlockAnalyzer extends Actor {
 
   def receive = {
     case AnalyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate, verbose) =>
+
       val ID = startRead / length
-      if (verbose) println(s"Start analyze of block $ID [$startRead - ${startRead + length}[\n" +
-        s"Ref [$self]")
+      if (verbose) println(s"Start analyze of block $ID [$startRead - ${startRead + length}[ - Ref [${self.path}]")
+
       sender ! analyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate, verbose)
-      if (verbose) println(s"Stop analyze of block $ID" +
-        s"\nRef [$self]")
+
+      if (verbose) println(s"Finished analyze of block $ID - Ref [${self.path}]")
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
 
@@ -210,10 +214,15 @@ private class BlockAnalyzer extends Actor {
     }
 
     searchResult match {
-      case None => Result(None, verbose)
+      case None => Result(self, path, None, verbose)
       case Some((positionInArray: Int, arrayIndex: Int)) =>
-        Result(Some(filePositionStartAnalyze + arrayIndex * ParamAKKA.bufferSize + positionInArray - 1), verbose) // remove 1 because first position in a file is zero.
+        Result(self, path, Some(filePositionStartAnalyze + arrayIndex * ParamAKKA.bufferSize + positionInArray - 1), verbose) // remove 1 because first position in a file is zero.
       case _ => throw new IllegalStateException("Search result should be a Tuple of two Integers.")
     }
+  }
+
+  override def postStop(): Unit = {
+    println(s"*** Rootee is dead ${self.path} ***")
+    super.postStop()
   }
 }

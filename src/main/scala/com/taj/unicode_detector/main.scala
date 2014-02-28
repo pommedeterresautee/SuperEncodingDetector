@@ -38,7 +38,7 @@ object main extends App {
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}UTF8_without_BOM.txt"
 
   val FEC = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\FEC.txt"
-  val arg = Array("--encoding", FEC, "--verbose")
+  val arg = Array("--encoding", FEC, "--debug")
   val help = Array("--help")
   val opts = new ScallopConf(arg) {
     banner( s"""
@@ -60,7 +60,7 @@ For usage see below:
     val removeBOM = opt[String]("removeBOM", descr = "Remove the Byte Order Mark from a file. Use output option to provide the destination folder.", validate = new File(_).exists())
     val output = opt[String]("output", descr = "Path to the file where to save the result.", validate = !new File(_).exists())
     val merge = opt[List[String]]("merge", descr = "Merge the files provided. Use output option to provide the destination folder.", validate = filesExist)
-    val verbose = toggle("verbose", descrYes = "Display lots of information during the process.", descrNo = "Display minimum during the process (same as not using this argument).", default = Some(false), prefix = "no-")
+    val debug = toggle("debug", descrYes = "Display lots of debug information during the process.", descrNo = "Display minimum during the process (same as not using this argument).", default = Some(false), prefix = "no-")
     val help = opt[Boolean]("help", descr = "Show this message.")
     // val version = opt[Boolean]("version", noshort = true, descr = "Print program version.")
     codependent(merge, output)
@@ -68,7 +68,7 @@ For usage see below:
     conflicts(encoding, List(merge, help /*, version*/))
   }
 
-  val verboseOption = opts.verbose.get
+  val verboseOption = opts.debug.get
   val verbose = verboseOption match {
     case Some(true) => true
     case _ => false

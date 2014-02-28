@@ -38,6 +38,7 @@ import scala.concurrent.Await
 import akka.pattern.ask
 import java.util.concurrent.TimeUnit
 
+
 /**
  * Contain properties of each BOM.
  * @param charsetUsed Encoding type.
@@ -86,23 +87,26 @@ object BOM {
       case UTF_16_LE.BOM :+ _ :+ _ | UTF_16_LE.BOM_XML => UTF_16_LE
       case UTF8.BOM :+ _ | UTF8.BOM_XML => UTF8
       case _ => // No BOM detected
-        var result: BOMFileEncoding = null
-        val system = ActorSystem("FileIdentification")
-        val masterASCII = system.actorOf(Props(new ASCIIFileAnalyzer(verbose)), name = "ASCIIFileAnalyzer")
+
+        val system: ActorSystem = ActorSystem("ActorSystemFileIdentification")
+
+        val masterASCII = system.actorOf(Props(new ASCIIFileAnalyzer(verbose, file)), name = "ASCIIFileAnalyzer")
         implicit val timeout = Timeout(2, TimeUnit.MINUTES)
-        Await.result(masterASCII ? AnalyzeFile(file), timeout.duration) match {
-          case FullCheckResult(None, _) => result = ASCII
+        val result: BOMFileEncoding = Await.result(masterASCII ? InitAnalyzeFile(), timeout.duration) match {
+          case FullCheckResult(None, _) =>
+            ASCII
           case FullCheckResult(Some(positionNonASCIIByte), _) =>
-            val masterUTF8 = system.actorOf(Props(new UTF8FileAnalyzer(verbose)), name = "UTF8FileAnalyzer")
-            Await.result(masterUTF8 ? AnalyzeFile(file), timeout.duration) match {
-              case FullCheckResult(None, _) => result = UTF8NoBOM
+            val masterUTF8 = system.actorOf(Props(new UTF8FileAnalyzer(verbose, file)), name = "UTF8FileAnalyzer")
+            Await.result(masterUTF8 ? InitAnalyzeFile(), timeout.duration) match {
+              case FullCheckResult(None, _) => UTF8NoBOM
               case FullCheckResult(Some(positionNonUTF8Byte), _) =>
                 if (verbose) println(s"The first non matching byte is located at position $positionNonUTF8Byte in the file $file")
-                result = UnknownEncoding
+                UnknownEncoding
               case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during ASCII check")
             }
           case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during UTF8 no BOM check")
         }
+        println("Shutdown the Akka system")
         system.shutdown()
         result
     }

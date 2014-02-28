@@ -35,7 +35,7 @@ import akka.actor.{Props, ActorSystem}
 import com.taj.unicode_detector._
 import akka.testkit.{ImplicitSender, TestKit}
 
-import com.taj.unicode_detector.AnalyzeFile
+import com.taj.unicode_detector.InitAnalyzeFile
 import com.taj.unicode_detector.FullCheckResult
 import com.taj.unicode_detector
 import org.apache.commons.codec.digest.DigestUtils
@@ -118,8 +118,8 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
 
         s"should be detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
           implicit val timeout = Timeout(5, TimeUnit.SECONDS)
-          val master = system.actorOf(Props(new ASCIIFileAnalyzer(verbose = false)), name = s"ActorOf_${fileToTest.fileName}")
-          val resultOfTest = Await.result(master ? AnalyzeFile(file.getAbsolutePath), timeout.duration).asInstanceOf[FullCheckResult]
+          val master = system.actorOf(Props(new ASCIIFileAnalyzer(verbose = false, file.getAbsolutePath)), name = s"ActorOf_${fileToTest.fileName}")
+          val resultOfTest = Await.result(master ? InitAnalyzeFile(), timeout.duration).asInstanceOf[FullCheckResult]
           resultOfTest.nonMatchingBytePositionInFile.isEmpty should equal(fileToTest.isASCIIContent)
         }
 
@@ -146,8 +146,8 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
 
         s"should be not detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
           implicit val timeout = Timeout(20000)
-          val master = system.actorOf(Props(new ASCIIFileAnalyzer(verbose = false)), name = s"ActorOf_${fileToTest.fileName}")
-          val resultOfTest = Await.result(master ? AnalyzeFile(file.getAbsolutePath), timeout.duration).asInstanceOf[FullCheckResult]
+          val master = system.actorOf(Props(new ASCIIFileAnalyzer(verbose = false, file.getAbsolutePath)), name = s"ActorOf_${fileToTest.fileName}_wrong_parameter")
+          val resultOfTest = Await.result(master ? InitAnalyzeFile(), timeout.duration).asInstanceOf[FullCheckResult]
           if (resultOfTest.nonMatchingBytePositionInFile.isDefined) println("position: " + resultOfTest.nonMatchingBytePositionInFile.get)
           resultOfTest.nonMatchingBytePositionInFile.isEmpty should not equal fileToTest.isASCIIContent
         }
