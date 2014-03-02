@@ -70,20 +70,19 @@ object BOMEncoding {
 object TestResult{
   case class InitAnalyzeFile(file: String, verbose: Boolean)
   case class ResultOfTestBOM(result:Option[BOMFileEncoding])
-  case class ResultOfTestFullFileAnalyze(category:BOMFileEncoding, nonMatchingBytePositionInFile: Option[Long], timeElapsed: Long)
+  case class ResultOfTestFullFileAnalyze(category:BOMFileEncoding, nonMatchingBytePositionInFile: Option[Long], timeElapsed: Long, reaper:ActorRef)
   case class FinalResult(result:BOMFileEncoding)
 }
 
 class BOM() extends Actor{
   import BOMEncoding._
   import TestResult._
-//  implicit val timeout = Timeout(2, TimeUnit.MINUTES)
 
   var mActorUTF8: Option[ActorRef] = None
   var mVerbose:Option[Boolean] = None
   var mFile:Option[String] = None
 
-  var mActorReaper: Option[ActorRef] = None
+
   var mOriginalSender: Option[ActorRef] = None
   
   def receive = {
@@ -96,20 +95,24 @@ class BOM() extends Actor{
     case ResultOfTestBOM(Some(detectedEncoding)) =>
       mOriginalSender.get ! FinalResult(detectedEncoding)
     case ResultOfTestBOM(None) =>
-      mActorReaper = Some(context.system.actorOf(Props(new Reaper(mVerbose.get)), "Reaper"))
+      val asciiReaper = context.system.actorOf(Props(new Reaper(mVerbose.get)), "ASCIIReaper")
       val mActorASCIIActorRef = context.system.actorOf(Props(new FileAnalyzer(ASCII, mVerbose.get, mFile.get, ParamAkka.checkASCII)), name = "ASCIIFileAnalyzer")
-      mActorASCIIActorRef ! StartRegistration(mActorReaper.get)
+      mActorASCIIActorRef ! StartRegistration(asciiReaper)
       mActorASCIIActorRef ! InitAnalyzeFile(mFile.get, mVerbose.get)
-    case ResultOfTestFullFileAnalyze(ASCII, None, _) =>
+    case ResultOfTestFullFileAnalyze(ASCII, None, _, reaper) =>
       mOriginalSender.get ! FinalResult(ASCII)
-    case ResultOfTestFullFileAnalyze(ASCII, Some(position), time) =>
+      reaper ! KillAkka()
+    case ResultOfTestFullFileAnalyze(ASCII, Some(position), time, _) =>
+      val UTF8Reaper = context.system.actorOf(Props(new Reaper(mVerbose.get)), "UTF8Reaper")
       val mActorUTF8ActorRef = context.system.actorOf(Props(new FileAnalyzer(UTF8NoBOM, mVerbose.get, mFile.get, ParamAkka.checkUTF8)), name = "UTF8FileAnalyzer")
-      mActorUTF8ActorRef ! StartRegistration(mActorReaper.get)
+      mActorUTF8ActorRef ! StartRegistration(UTF8Reaper)
       mActorUTF8ActorRef ! InitAnalyzeFile(mFile.get, mVerbose.get)
-    case ResultOfTestFullFileAnalyze(UTF8NoBOM, Some(position), time) =>
-      mOriginalSender.get ! FinalResult(UnknownEncoding)
-    case ResultOfTestFullFileAnalyze(UTF8NoBOM, None, time) =>
+    case ResultOfTestFullFileAnalyze(UTF8NoBOM, None, time, reaper) =>
       mOriginalSender.get ! FinalResult(UTF8NoBOM)
+      reaper ! KillAkka()
+    case ResultOfTestFullFileAnalyze(UTF8NoBOM, Some(position), time, reaper) =>
+      mOriginalSender.get ! FinalResult(UnknownEncoding)
+      reaper ! KillAkka()
   }
 }
 

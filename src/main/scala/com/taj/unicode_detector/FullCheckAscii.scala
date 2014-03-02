@@ -60,13 +60,15 @@ class FileAnalyzer(encodingTested:BOMFileEncoding , verbose: Boolean, path: Stri
   val routerBlockAnalyzer: ActorRef = context.actorOf(Props(new BlockAnalyzer(verbose)).withRouter(RoundRobinRouter(nbrOfWorkers)), name = s"Router_${encodingTested.charsetName}")
   
   var masterSender: Option[ActorRef] = None
+  var mReaper:Option[ActorRef] = None
   var startAnalyzeTime = 0l
   var resultReceived = 0
 
   def receive = {
     case StartRegistration(register) =>
-      register ! RegisterRooter(routerBlockAnalyzer)
-      routerBlockAnalyzer ! Broadcast(RegisterMe(register))
+      mReaper = Some(register)
+      mReaper.get ! RegisterRooter(routerBlockAnalyzer)
+      routerBlockAnalyzer ! Broadcast(RegisterMe(mReaper.get))
     
     case InitAnalyzeFile(_, _) =>
       startAnalyzeTime = System.currentTimeMillis
@@ -92,7 +94,7 @@ class FileAnalyzer(encodingTested:BOMFileEncoding , verbose: Boolean, path: Stri
       masterSender match {
         case None =>
         case Some(masterActor) if resultReceived == numberOfPartToAnalyze || !nonMatchingCharPositionInFile.isEmpty =>
-          masterActor ! ResultOfTestFullFileAnalyze(encodingTested, nonMatchingCharPositionInFile, System.currentTimeMillis() - startAnalyzeTime)
+          masterActor ! ResultOfTestFullFileAnalyze(encodingTested, nonMatchingCharPositionInFile, System.currentTimeMillis() - startAnalyzeTime, mReaper.get)
           implicit val timeout = Timeout(2, TimeUnit.MINUTES)
           masterSender = None
 
