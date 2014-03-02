@@ -1,6 +1,6 @@
 package com.taj.unicode_detector
 
-import akka.actor.{PoisonPill, Terminated, ActorRef, Actor}
+import akka.actor.{Terminated, ActorRef, Actor}
 import scala.collection.mutable.ArrayBuffer
 import com.taj.unicode_detector.ActorLifeOverview._
 

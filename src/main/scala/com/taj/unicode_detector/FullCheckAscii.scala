@@ -102,11 +102,6 @@ class FileAnalyzer(encodingTested:BOMFileEncoding , verbose: Boolean, path: Stri
       }
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
-
-  override def postStop(): Unit = {
-    if(verbose) println(s"*** Stop Actor ${self.path} ***")
-    super.postStop()
-  }
 }
 
 private class BlockAnalyzer(verbose:Boolean) extends Actor {
@@ -151,11 +146,6 @@ private class BlockAnalyzer(verbose:Boolean) extends Actor {
         Result(self, path, Some(filePositionStartAnalyze + arrayIndex * ParamAkka.bufferSize + positionInArray - 1), verbose) // remove 1 because first position in a file is zero.
       case _ => throw new IllegalStateException("Search result should be a Tuple of two Integers.")
     }
-  }
-
-  override def postStop(): Unit = {
-    if (verbose) println(s"*** Rootee is dead ${self.path} ***")
-    super.postStop()
   }
 }
 

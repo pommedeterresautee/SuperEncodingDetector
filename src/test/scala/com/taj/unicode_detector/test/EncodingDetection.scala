@@ -31,17 +31,11 @@ package com.taj.unicode_detector.test
 
 import org.scalatest._
 import java.io.{FileInputStream, RandomAccessFile, File}
-import akka.actor.{Props, ActorSystem}
+import akka.actor.ActorSystem
 import com.taj.unicode_detector._
 import akka.testkit.{ImplicitSender, TestKit}
 
-import com.taj.unicode_detector.FileFullAnalyzeStateMessages._
-import com.taj.unicode_detector
 import org.apache.commons.codec.digest.DigestUtils
-import scala.concurrent.Await
-import akka.util.Timeout
-import akka.pattern.ask
-import java.util.concurrent.TimeUnit
 
 /**
  * A case class to contain the parameters of a test file.
