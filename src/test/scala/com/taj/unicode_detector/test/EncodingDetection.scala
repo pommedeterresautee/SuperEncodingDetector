@@ -35,8 +35,7 @@ import akka.actor.{Props, ActorSystem}
 import com.taj.unicode_detector._
 import akka.testkit.{ImplicitSender, TestKit}
 
-import com.taj.unicode_detector.InitAnalyzeFile
-import com.taj.unicode_detector.FullCheckResult
+import com.taj.unicode_detector.EncodingAnalyze._
 import com.taj.unicode_detector
 import org.apache.commons.codec.digest.DigestUtils
 import scala.concurrent.Await

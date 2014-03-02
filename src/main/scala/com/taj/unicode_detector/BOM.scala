@@ -37,6 +37,8 @@ import akka.util.Timeout
 import scala.concurrent.Await
 import akka.pattern.ask
 import java.util.concurrent.TimeUnit
+import com.taj.unicode_detector.ActorLifeOverview._
+import com.taj.unicode_detector.EncodingAnalyze._
 
 
 /**
@@ -92,16 +94,21 @@ object BOM {
       case UTF_16_LE.BOM :+ _ :+ _ | UTF_16_LE.BOM_XML => UTF_16_LE
       case UTF8.BOM :+ _ | UTF8.BOM_XML => UTF8
       case _ => // No BOM detected
-
         val system: ActorSystem = ActorSystem("ActorSystemFileIdentification")
 
+        val reaper = system.actorOf(Props(new Reaper(verbose)), "Reaper")
+
         val masterASCII = system.actorOf(Props(new ASCIIFileAnalyzer(verbose, file)), name = "ASCIIFileAnalyzer")
+
+        masterASCII ! StartRegistration(reaper)
+
         implicit val timeout = Timeout(2, TimeUnit.MINUTES)
         val result: BOMFileEncoding = Await.result(masterASCII ? InitAnalyzeFile(), timeout.duration) match {
           case FullCheckResult(None, _) =>
             ASCII
           case FullCheckResult(Some(positionNonASCIIByte), _) =>
             val masterUTF8 = system.actorOf(Props(new UTF8FileAnalyzer(verbose, file)), name = "UTF8FileAnalyzer")
+            masterUTF8 ! StartRegistration(reaper)
             Await.result(masterUTF8 ? InitAnalyzeFile(), timeout.duration) match {
               case FullCheckResult(None, _) => UTF8NoBOM
               case FullCheckResult(Some(positionNonUTF8Byte), _) =>
@@ -111,8 +118,6 @@ object BOM {
             }
           case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during UTF8 no BOM check")
         }
-        if (verbose) println("Shutdown the Akka system")
-        system.shutdown()
         result
     }
     ret

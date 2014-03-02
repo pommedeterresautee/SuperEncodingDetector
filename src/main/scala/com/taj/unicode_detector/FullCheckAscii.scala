@@ -36,17 +36,17 @@ import akka.routing.{Broadcast, RoundRobinRouter}
 import scala.Option
 import akka.util.Timeout
 import java.util.concurrent.TimeUnit
+import scala.collection.mutable.ArrayBuffer
+import com.taj.unicode_detector.ActorLifeOverview._
+import com.taj.unicode_detector.EncodingAnalyze._
 
+object EncodingAnalyze{
+  case class InitAnalyzeFile()
+  case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Int)
+  case class Result(actor: ActorRef, pathOfTheFileAnalyzed: String, nonMatchingCharPositionInFile: Option[Long], verbose: Boolean)
+  case class FullCheckResult(nonMatchingBytePositionInFile: Option[Long], timeElapsed: Long)
+}
 
-sealed trait MessageAKKA
-
-case class InitAnalyzeFile() extends MessageAKKA
-
-case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Int) extends MessageAKKA
-
-case class Result(actor: ActorRef, pathOfTheFileAnalyzed: String, nonMatchingCharPositionInFile: Option[Long], verbose: Boolean) extends MessageAKKA
-
-case class FullCheckResult(nonMatchingBytePositionInFile: Option[Long], timeElapsed: Long) extends MessageAKKA
 
 object ParamAKKA {
   val bufferSize: Int = 1024
@@ -132,20 +132,26 @@ class FileAnalyzer(verbose: Boolean, path: String, testToOperate: Array[Byte] =>
 
   val nbrOfWorkers = ParamAKKA.numberOfWorkerRequired(totalLengthToAnalyze)
   val routerBlockAnalyzer: ActorRef = context.actorOf(Props(new BlockAnalyzer(verbose)).withRouter(RoundRobinRouter(nbrOfWorkers)), name = s"Router_${self.path.name.charAt(0)}")
+  
   var masterSender: Option[ActorRef] = None
   var startAnalyzeTime = 0l
   var resultReceived = 0
 
   def receive = {
+    case StartRegistration(registrer) =>
+      registrer ! RegisterRooter(routerBlockAnalyzer)
+      routerBlockAnalyzer ! Broadcast(RegisterMe(registrer))
+    
     case InitAnalyzeFile() =>
       startAnalyzeTime = System.currentTimeMillis
       masterSender = Some(sender)
 
       if (verbose) println(
-        s"Start processing @$startAnalyzeTime\n" +
-          s"Current actor [${self.path}]\n" +
-          s"Received a message from ${sender.path}.\n" +
-          s"Will use $nbrOfWorkers Workers.")
+        s"""Start processing @$startAnalyzeTime
+        Current actor [${self.path}]
+        Received a message from ${sender.path}.
+        Will use $nbrOfWorkers Workers."""
+      )
 
       // Initialization of the workers
       (0 to nbrOfWorkers - 1)
@@ -163,8 +169,9 @@ class FileAnalyzer(verbose: Boolean, path: String, testToOperate: Array[Byte] =>
           masterActor ! FullCheckResult(nonMatchingCharPositionInFile, System.currentTimeMillis() - startAnalyzeTime)
           implicit val timeout = Timeout(2, TimeUnit.MINUTES)
           masterSender = None
+
           routerBlockAnalyzer ! Broadcast(PoisonPill)
-          //Await.result(masterActor ? PoisonPill, timeout.duration)
+
           if (verboseActivated) println(s"*** Finished Actor ${self.path} process in ${System.currentTimeMillis() - startAnalyzeTime} ***")
         case Some(masterActor) =>
           actor ! AnalyzeBlock(filePath, resultReceived * ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.bufferSize, testToOperate)
@@ -189,7 +196,8 @@ private class BlockAnalyzer(verbose:Boolean) extends Actor {
       sender ! analyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate, verbose)
 
       if (verbose) println(s"Finished analyze of block $ID - Ref [${self.path}]")
-    case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
+    case RegisterMe(reg:ActorRef) => reg ! RegisterRootee(self)
+    case badMessage => throw new IllegalArgumentException(s"Sent bad parameters (${badMessage.toString}) to Actor ${self.path}")
   }
 
   private def analyzeBlock(path: String, filePositionStartAnalyze: Long, lengthOfBlockToAnalyze: Long, bufferSize: Integer, testToOperate: Array[Byte] => Int, verbose: Boolean): Result = {
@@ -226,3 +234,4 @@ private class BlockAnalyzer(verbose:Boolean) extends Actor {
     super.postStop()
   }
 }
+

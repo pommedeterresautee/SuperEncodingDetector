@@ -34,16 +34,25 @@ import java.nio.charset.{StandardCharsets, Charset}
 import scala.io.Source
 import java.io.{InputStream, FileOutputStream, OutputStreamWriter, BufferedWriter}
 
-
+/**
+ * Convert text files to a specific format.
+ */
 object Converter {
   private val convertAnyStringToASCII: String => String =
     text => Normalizer
       .normalize(text, Normalizer.Form.NFD)
       .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
 
+  /**
+   * Convert a text file to ASCII.
+   * @param sourcePath path to the source file.
+   * @param destinationPath path to the final file.
+   * @param encodingSource type of encoding for the original file.
+   * @param verbose print more information.
+   */
   def convert2ASCII(sourcePath: String, destinationPath: String, encodingSource: BOMFileEncoding, verbose: Boolean) = convert(BOM.removeBOM(verbose, encodingSource, sourcePath), destinationPath, encodingSource.charsetUsed, encodingDestination = StandardCharsets.US_ASCII, convertAnyStringToASCII)
 
-  def convert(sourceIS: InputStream, destinationPath: String, encodingSource: Option[Charset], encodingDestination: Charset, transformation: String => String) {
+  private def convert(sourceIS: InputStream, destinationPath: String, encodingSource: Option[Charset], encodingDestination: Charset, transformation: String => String) {
     val content = encodingSource match {
       case Some(charset) => Source.fromInputStream(sourceIS, encodingSource.get.name())
       case None => throw new IllegalStateException("Try to convert a file to an Unknown charset (not detected)")
