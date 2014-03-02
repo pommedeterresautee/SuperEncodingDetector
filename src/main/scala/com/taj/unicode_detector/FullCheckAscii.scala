@@ -38,27 +38,26 @@ import akka.util.Timeout
 import java.util.concurrent.TimeUnit
 import com.taj.unicode_detector.ActorLifeOverview._
 import com.taj.unicode_detector.EncodingAnalyze._
+import com.taj.unicode_detector.TestResult.{ResultOfTestFullFileAnalyze, InitAnalyzeFile}
 
 object EncodingAnalyze{
-  case class InitAnalyzeFile()
   case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Int)
   case class Result(actor: ActorRef, pathOfTheFileAnalyzed: String, nonMatchingCharPositionInFile: Option[Long], verbose: Boolean)
-  case class FullCheckResult(nonMatchingBytePositionInFile: Option[Long], timeElapsed: Long)
 }
 
-class UTF8FileAnalyzer(verbose: Boolean, path: String) extends FileAnalyzer(verbose: Boolean, path: String, testToOperate = ParamAKKA.checkUTF8)
+//class UTF8FileAnalyzer(verbose: Boolean, path: String) extends FileAnalyzer(verbose: Boolean, path: String, testToOperate = ParamAkka.checkUTF8)
+//
+//class ASCIIFileAnalyzer(verbose: Boolean, path: String) extends FileAnalyzer(verbose: Boolean, path: String, testToOperate = ParamAkka.checkASCII)
 
-class ASCIIFileAnalyzer(verbose: Boolean, path: String) extends FileAnalyzer(verbose: Boolean, path: String, testToOperate = ParamAKKA.checkASCII)
-
-class FileAnalyzer(verbose: Boolean, path: String, testToOperate: Array[Byte] => Int) extends Actor {
+class FileAnalyzer(encodingTested:BOMFileEncoding , verbose: Boolean, path: String, testToOperate: Array[Byte] => Int) extends Actor {
   val totalLengthToAnalyze = new File(path).length()
-  val numberOfPartToAnalyze = (totalLengthToAnalyze / ParamAKKA.sizeOfaPartToAnalyze).toInt match {
+  val numberOfPartToAnalyze = (totalLengthToAnalyze / ParamAkka.sizeOfaPartToAnalyze).toInt match {
     case 0 => 1
     case count: Int => count
   }
 
-  val nbrOfWorkers = ParamAKKA.numberOfWorkerRequired(totalLengthToAnalyze)
-  val routerBlockAnalyzer: ActorRef = context.actorOf(Props(new BlockAnalyzer(verbose)).withRouter(RoundRobinRouter(nbrOfWorkers)), name = s"Router_${self.path.name.charAt(0)}")
+  val nbrOfWorkers = ParamAkka.numberOfWorkerRequired(totalLengthToAnalyze)
+  val routerBlockAnalyzer: ActorRef = context.actorOf(Props(new BlockAnalyzer(verbose)).withRouter(RoundRobinRouter(nbrOfWorkers)), name = s"Router_${encodingTested.charsetName}")
   
   var masterSender: Option[ActorRef] = None
   var startAnalyzeTime = 0l
@@ -69,11 +68,11 @@ class FileAnalyzer(verbose: Boolean, path: String, testToOperate: Array[Byte] =>
       register ! RegisterRooter(routerBlockAnalyzer)
       routerBlockAnalyzer ! Broadcast(RegisterMe(register))
     
-    case InitAnalyzeFile() =>
+    case InitAnalyzeFile(_, _) =>
       startAnalyzeTime = System.currentTimeMillis
       masterSender = Some(sender)
 
-      if (verbose) println(
+      if (verbose) println (
         s"""Start processing @$startAnalyzeTime
         Current actor [${self.path}]
         Received a message from ${sender.path}.
@@ -83,7 +82,7 @@ class FileAnalyzer(verbose: Boolean, path: String, testToOperate: Array[Byte] =>
       // Initialization of the workers
       (0 to nbrOfWorkers - 1)
         .foreach(partNumber =>
-        routerBlockAnalyzer ! AnalyzeBlock(path, partNumber * ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.bufferSize, testToOperate))
+        routerBlockAnalyzer ! AnalyzeBlock(path, partNumber * ParamAkka.sizeOfaPartToAnalyze, ParamAkka.sizeOfaPartToAnalyze, ParamAkka.bufferSize, testToOperate))
 
       if (verbose) println(s"The sender is ${sender.path} but the parent is ${context.parent.path}")
 
@@ -93,7 +92,7 @@ class FileAnalyzer(verbose: Boolean, path: String, testToOperate: Array[Byte] =>
       masterSender match {
         case None =>
         case Some(masterActor) if resultReceived == numberOfPartToAnalyze || !nonMatchingCharPositionInFile.isEmpty =>
-          masterActor ! FullCheckResult(nonMatchingCharPositionInFile, System.currentTimeMillis() - startAnalyzeTime)
+          masterActor ! ResultOfTestFullFileAnalyze(encodingTested, nonMatchingCharPositionInFile, System.currentTimeMillis() - startAnalyzeTime)
           implicit val timeout = Timeout(2, TimeUnit.MINUTES)
           masterSender = None
 
@@ -101,7 +100,7 @@ class FileAnalyzer(verbose: Boolean, path: String, testToOperate: Array[Byte] =>
 
           if (verboseActivated) println(s"*** Finished Actor ${self.path} process in ${System.currentTimeMillis() - startAnalyzeTime} ***")
         case Some(masterActor) =>
-          actor ! AnalyzeBlock(filePath, resultReceived * ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.bufferSize, testToOperate)
+          actor ! AnalyzeBlock(filePath, resultReceived * ParamAkka.sizeOfaPartToAnalyze, ParamAkka.sizeOfaPartToAnalyze, ParamAkka.bufferSize, testToOperate)
       }
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
@@ -151,7 +150,7 @@ private class BlockAnalyzer(verbose:Boolean) extends Actor {
     searchResult match {
       case None => Result(self, path, None, verbose)
       case Some((positionInArray: Int, arrayIndex: Int)) =>
-        Result(self, path, Some(filePositionStartAnalyze + arrayIndex * ParamAKKA.bufferSize + positionInArray - 1), verbose) // remove 1 because first position in a file is zero.
+        Result(self, path, Some(filePositionStartAnalyze + arrayIndex * ParamAkka.bufferSize + positionInArray - 1), verbose) // remove 1 because first position in a file is zero.
       case _ => throw new IllegalStateException("Search result should be a Tuple of two Integers.")
     }
   }

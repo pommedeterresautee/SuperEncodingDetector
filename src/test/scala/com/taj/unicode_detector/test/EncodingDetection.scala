@@ -59,30 +59,30 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
   val tempFilesFolder = testResourcesFolder + s"temp${File.separator}"
 
   // First list of text files with or without BOM
-  val UTF8_with_BOM = testFileProperties("UTF8_with_BOM.txt", BOM.UTF8, isASCIIContent = false, 1)
-  val UTF8_without_BOM = testFileProperties("UTF8_without_BOM.txt", BOM.UTF8NoBOM, isASCIIContent = false, 1)
-  val UTF16_BE = testFileProperties("UTF16_BE.txt", BOM.UTF_16_BE, isASCIIContent = false, 1)
-  val UTF16_LE = testFileProperties("UTF16_LE.txt", BOM.UTF_16_LE, isASCIIContent = false, 1)
-  val ASCII = testFileProperties("ASCII.txt", BOM.ASCII, isASCIIContent = true, 1)
-  val Windows_1252 = testFileProperties("Windows_1252.txt", BOM.UnknownEncoding, isASCIIContent = false, 1)
+  val UTF8_with_BOM = testFileProperties("UTF8_with_BOM.txt", BOMEncoding.UTF8, isASCIIContent = false, 1)
+  val UTF8_without_BOM = testFileProperties("UTF8_without_BOM.txt", BOMEncoding.UTF8NoBOM, isASCIIContent = false, 1)
+  val UTF16_BE = testFileProperties("UTF16_BE.txt", BOMEncoding.UTF_16_BE, isASCIIContent = false, 1)
+  val UTF16_LE = testFileProperties("UTF16_LE.txt", BOMEncoding.UTF_16_LE, isASCIIContent = false, 1)
+  val ASCII = testFileProperties("ASCII.txt", BOMEncoding.ASCII, isASCIIContent = true, 1)
+  val Windows_1252 = testFileProperties("Windows_1252.txt", BOMEncoding.UnknownEncoding, isASCIIContent = false, 1)
 
   // Second list of files with BOM for comparison purpose
-  val UTF8_with_BOM_bis = testFileProperties("UTF8_with_BOM_bis.txt", BOM.UTF8, isASCIIContent = false, 1)
-  val UTF8_without_BOM_bis = testFileProperties("UTF8_without_BOM_bis.txt", BOM.UTF8NoBOM, isASCIIContent = false, 1)
-  val UTF16_BE_bis = testFileProperties("UTF16_BE_bis.txt", BOM.UTF_16_BE, isASCIIContent = false, 1)
-  val UTF16_LE_bis = testFileProperties("UTF16_LE_bis.txt", BOM.UTF_16_LE, isASCIIContent = false, 1)
+  val UTF8_with_BOM_bis = testFileProperties("UTF8_with_BOM_bis.txt", BOMEncoding.UTF8, isASCIIContent = false, 1)
+  val UTF8_without_BOM_bis = testFileProperties("UTF8_without_BOM_bis.txt", BOMEncoding.UTF8NoBOM, isASCIIContent = false, 1)
+  val UTF16_BE_bis = testFileProperties("UTF16_BE_bis.txt", BOMEncoding.UTF_16_BE, isASCIIContent = false, 1)
+  val UTF16_LE_bis = testFileProperties("UTF16_LE_bis.txt", BOMEncoding.UTF_16_LE, isASCIIContent = false, 1)
   // Files with BOM manually cleaned
-  val UTF8_with_BOM_manually_cleaned = testFileProperties("UTF8_with_BOM_manually_cleaned.txt", BOM.ASCII, isASCIIContent = true, 1)
-  val UTF16_BE_manually_cleaned = testFileProperties("UTF16_BE_manually_cleaned.txt", BOM.ASCII, isASCIIContent = true, 1)
-  val UTF16_LE_manually_cleaned = testFileProperties("UTF16_LE_manually_cleaned.txt", BOM.ASCII, isASCIIContent = true, 1)
+  val UTF8_with_BOM_manually_cleaned = testFileProperties("UTF8_with_BOM_manually_cleaned.txt", BOMEncoding.ASCII, isASCIIContent = true, 1)
+  val UTF16_BE_manually_cleaned = testFileProperties("UTF16_BE_manually_cleaned.txt", BOMEncoding.ASCII, isASCIIContent = true, 1)
+  val UTF16_LE_manually_cleaned = testFileProperties("UTF16_LE_manually_cleaned.txt", BOMEncoding.ASCII, isASCIIContent = true, 1)
 
   // Third list of text files with or without BOM and bad parameters
-  val UTF8_with_BOM_error = testFileProperties("UTF8_with_BOM.txt", BOM.UTF_16_BE, isASCIIContent = true, 2)
-  val UTF8_without_BOM_error = testFileProperties("UTF8_without_BOM.txt", BOM.UnknownEncoding, isASCIIContent = true, 2)
-  val UTF16_BE_error = testFileProperties("UTF16_BE.txt", BOM.UTF_16_LE, isASCIIContent = true, 2)
-  val UTF16_LE_error = testFileProperties("UTF16_LE.txt", BOM.UTF8, isASCIIContent = true, 2)
-  val ASCII_error = testFileProperties("ASCII.txt", BOM.UTF8NoBOM, isASCIIContent = false, 2)
-  val Windows_1252_error = testFileProperties("Windows_1252.txt", BOM.UTF_16_BE, isASCIIContent = true, 2)
+  val UTF8_with_BOM_error = testFileProperties("UTF8_with_BOM.txt", BOMEncoding.UTF_16_BE, isASCIIContent = true, 2)
+  val UTF8_without_BOM_error = testFileProperties("UTF8_without_BOM.txt", BOMEncoding.UnknownEncoding, isASCIIContent = true, 2)
+  val UTF16_BE_error = testFileProperties("UTF16_BE.txt", BOMEncoding.UTF_16_LE, isASCIIContent = true, 2)
+  val UTF16_LE_error = testFileProperties("UTF16_LE.txt", BOMEncoding.UTF8, isASCIIContent = true, 2)
+  val ASCII_error = testFileProperties("ASCII.txt", BOMEncoding.UTF8NoBOM, isASCIIContent = false, 2)
+  val Windows_1252_error = testFileProperties("Windows_1252.txt", BOMEncoding.UTF_16_BE, isASCIIContent = true, 2)
 
   /**
    * Clean all temp files before starting
@@ -111,15 +111,8 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
       s"${fileToTest.fileName} file" must {
         s"Workers quantity should be evaluated equals to ${fileToTest.workingActorsNeeded}" in {
           fileSize = file.length()
-          workerCount = ParamAKKA.numberOfWorkerRequired(fileSize)
+          workerCount = ParamAkka.numberOfWorkerRequired(fileSize)
           workerCount should equal(fileToTest.workingActorsNeeded)
-        }
-
-        s"should be detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
-          implicit val timeout = Timeout(5, TimeUnit.SECONDS)
-          val master = system.actorOf(Props(new ASCIIFileAnalyzer(verbose = false, file.getAbsolutePath)), name = s"ActorOf_${fileToTest.fileName}")
-          val resultOfTest = Await.result(master ? InitAnalyzeFile(), timeout.duration).asInstanceOf[FullCheckResult]
-          resultOfTest.nonMatchingBytePositionInFile.isEmpty should equal(fileToTest.isASCIIContent)
         }
 
         s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed}" in {
@@ -139,7 +132,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
       s"${fileToTest.fileName} file wrongly parameterized" must {
         s"Workers quantity should not be evaluated equals to ${fileToTest.workingActorsNeeded}" in {
           fileSize = file.length()
-          workerCount = ParamAKKA.numberOfWorkerRequired(fileSize)
+          workerCount = ParamAkka.numberOfWorkerRequired(fileSize)
           workerCount should not equal fileToTest.workingActorsNeeded
         }
 
@@ -211,7 +204,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         "the file must be detected as ASCII" in {
           BOM.copyWithoutBom(sourcePath, tempFilePath, verbose = true)
           tempFile should be('exists)
-          BOM.detect(tempFile.getAbsolutePath, verbose = false).charsetUsed should be(unicode_detector.BOM.ASCII.charsetUsed)
+          BOM.detect(tempFile.getAbsolutePath, verbose = false).charsetUsed should be(BOMEncoding.ASCII.charsetUsed)
         }
 
         s"the size of ${tempFile.getName} should be equal to the size of ${manuallyCleaned.fileName}" in {
@@ -256,7 +249,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         new File(convertedFile) should be('exists)
         convertedFile.length should be > 0
         val encoding = BOM.detect(convertedFile, verbose = false)
-        encoding should equal(BOM.ASCII)
+        encoding should equal(BOMEncoding.ASCII)
       }
   }
 }

@@ -2,7 +2,7 @@ package com.taj.unicode_detector
 
 
 
-object ParamAKKA {
+object ParamAkka {
 
   type EncodingTest = Array[Byte] => Int
 
