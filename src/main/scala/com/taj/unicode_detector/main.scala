@@ -37,7 +37,7 @@ object main extends App {
   val testResourcesFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}"
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
 
-  val BIG_FILE = encodedFileFolder + "test.txt"
+  val BIG_FILE = encodedFileFolder + "UTF8_without_BOM_big_file.txt"
   val arg = Array("--encoding", BIG_FILE, "--debug")
   val help = Array("--help")
 
