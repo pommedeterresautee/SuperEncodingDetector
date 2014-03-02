@@ -19,8 +19,8 @@ class Reaper(verbose:Boolean) extends Actor {
   var rooter: Option[ActorRef] = None
   var orderToKillAkka = false
 
-  def cleanAkka(authorisedToCloseAkka:Boolean) {
-    if (rooter.isEmpty && authorisedToCloseAkka) {
+  def stopAkka() {
+    if (rooter.isEmpty) {
       if (verbose) println("*** EVERY BODY IS GONE ***")
       context.system.shutdown()
     }
@@ -39,8 +39,9 @@ class Reaper(verbose:Boolean) extends Actor {
       if (verbose) println(s"*** has been removed ${ref.path} ***")
       if(watchedRootee.contains(ref)) watchedRootee -= ref
       if(rooter.isDefined && rooter.get.equals(ref) ) rooter = None
-      cleanAkka(orderToKillAkka)
+      if(orderToKillAkka) stopAkka()
     case KillAkka() => orderToKillAkka = true
-      cleanAkka(orderToKillAkka)
+      if(orderToKillAkka) stopAkka()
+    case a => throw new IllegalArgumentException(s"Sent bad argument to ${self.path}: ${a.toString}")
   }
 }

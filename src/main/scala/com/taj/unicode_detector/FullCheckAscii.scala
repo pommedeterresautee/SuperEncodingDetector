@@ -37,17 +37,13 @@ import scala.Option
 import akka.util.Timeout
 import java.util.concurrent.TimeUnit
 import com.taj.unicode_detector.ActorLifeOverview._
-import com.taj.unicode_detector.EncodingAnalyze._
+import com.taj.unicode_detector.FileFullAnalyzeStateMessages._
 import com.taj.unicode_detector.TestResult.{ResultOfTestFullFileAnalyze, InitAnalyzeFile}
 
-object EncodingAnalyze{
+private object FileFullAnalyzeStateMessages {
   case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Int)
   case class Result(actor: ActorRef, pathOfTheFileAnalyzed: String, nonMatchingCharPositionInFile: Option[Long], verbose: Boolean)
 }
-
-//class UTF8FileAnalyzer(verbose: Boolean, path: String) extends FileAnalyzer(verbose: Boolean, path: String, testToOperate = ParamAkka.checkUTF8)
-//
-//class ASCIIFileAnalyzer(verbose: Boolean, path: String) extends FileAnalyzer(verbose: Boolean, path: String, testToOperate = ParamAkka.checkASCII)
 
 class FileAnalyzer(encodingTested:BOMFileEncoding , verbose: Boolean, path: String, testToOperate: Array[Byte] => Int) extends Actor {
   val totalLengthToAnalyze = new File(path).length()

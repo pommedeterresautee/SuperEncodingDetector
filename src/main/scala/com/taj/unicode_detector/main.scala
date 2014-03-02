@@ -90,7 +90,7 @@ For usage see below:
   val optionDetection = opts.encoding.get
   optionDetection match {
     case Some(list) =>
-      list.map(path => (path, BOM.detect(path, debug))).foreach {
+      list.map(path => (path, Operations.detect(path, debug))).foreach {
         case (file, encoding) =>
           println(file + " ; " + encoding.charsetName)
       }
@@ -100,8 +100,8 @@ For usage see below:
   val optionMerge = opts.merge.get
   optionMerge match {
     case Some(list) =>
-      if (!BOM.isSameBOM(true, list: _*)) System.exit(1)
-      BOM.mergeFilesWithoutBom(debug, opts.output.get.get, list: _*)
+      if (!Operations.isSameBOM(true, list: _*)) System.exit(1)
+      Operations.mergeFilesWithoutBom(debug, opts.output.get.get, list: _*)
     case _ =>
   }
 }

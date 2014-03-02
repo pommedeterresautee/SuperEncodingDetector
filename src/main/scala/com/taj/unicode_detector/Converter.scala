@@ -50,7 +50,7 @@ object Converter {
    * @param encodingSource type of encoding for the original file.
    * @param verbose print more information.
    */
-  def convert2ASCII(sourcePath: String, destinationPath: String, encodingSource: BOMFileEncoding, verbose: Boolean) = convert(BOM.removeBOM(verbose, encodingSource, sourcePath), destinationPath, encodingSource.charsetUsed, encodingDestination = StandardCharsets.US_ASCII, convertAnyStringToASCII)
+  def convert2ASCII(sourcePath: String, destinationPath: String, encodingSource: BOMFileEncoding, verbose: Boolean) = convert(Operations.removeBOM(verbose, encodingSource, sourcePath), destinationPath, encodingSource.charsetUsed, encodingDestination = StandardCharsets.US_ASCII, convertAnyStringToASCII)
 
   private def convert(sourceIS: InputStream, destinationPath: String, encodingSource: Option[Charset], encodingDestination: Charset, transformation: String => String) {
     val content = encodingSource match {

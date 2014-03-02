@@ -35,7 +35,7 @@ import akka.actor.{Props, ActorSystem}
 import com.taj.unicode_detector._
 import akka.testkit.{ImplicitSender, TestKit}
 
-import com.taj.unicode_detector.EncodingAnalyze._
+import com.taj.unicode_detector.FileFullAnalyzeStateMessages._
 import com.taj.unicode_detector
 import org.apache.commons.codec.digest.DigestUtils
 import scala.concurrent.Await
@@ -116,7 +116,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed}" in {
-          val detection = BOM.detect(file.getAbsolutePath, verbose = false)
+          val detection = Operations.detect(file.getAbsolutePath, verbose = false)
           detection should equal(fileToTest.encoding)
         }
       }
@@ -145,7 +145,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
 //        }
 
         s"should not be detected as encoded with charset ${fileToTest.encoding.charsetUsed}" in {
-          val detection = BOM.detect(file.getAbsolutePath, verbose = false)
+          val detection = Operations.detect(file.getAbsolutePath, verbose = false)
           detection should not equal fileToTest.encoding
         }
       }
@@ -162,12 +162,12 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
 
       s"${first.fileName} and ${second.fileName}" must {
         "have the same detected BOM" in {
-          val same = BOM.isSameBOM(true, firstPath, secondPath)
+          val same = Operations.isSameBOM(true, firstPath, secondPath)
           same should be(true)
         }
 
         s"Merge files ${first.fileName} and ${second.fileName} together" in {
-          BOM.mergeFilesWithoutBom(true, tempPath, firstPath, secondPath)
+          Operations.mergeFilesWithoutBom(true, tempPath, firstPath, secondPath)
           tempFile should be('exists)
           tempFile.length() should equal(firstFile.length() + secondFile.length() - first.encoding.BOM.size)
         }
@@ -178,7 +178,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
     case (file1, file2) =>
       s"${file1.fileName} and ${file2.fileName}" must {
         "have different detected BOM" in {
-          val same = BOM.isSameBOM(false, encodedFileFolder + file1.fileName, encodedFileFolder + file2.fileName)
+          val same = Operations.isSameBOM(false, encodedFileFolder + file1.fileName, encodedFileFolder + file2.fileName)
           same should be(false)
         }
       }
@@ -202,9 +202,9 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         "the file must be detected as ASCII" in {
-          BOM.copyWithoutBom(sourcePath, tempFilePath, verbose = true)
+          Operations.copyWithoutBom(sourcePath, tempFilePath, verbose = true)
           tempFile should be('exists)
-          BOM.detect(tempFile.getAbsolutePath, verbose = false).charsetUsed should be(BOMEncoding.ASCII.charsetUsed)
+          Operations.detect(tempFile.getAbsolutePath, verbose = false).charsetUsed should be(BOMEncoding.ASCII.charsetUsed)
         }
 
         s"the size of ${tempFile.getName} should be equal to the size of ${manuallyCleaned.fileName}" in {
@@ -248,7 +248,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         Converter.convert2ASCII(fileToConvert, convertedFile, file.encoding, verbose = false)
         new File(convertedFile) should be('exists)
         convertedFile.length should be > 0
-        val encoding = BOM.detect(convertedFile, verbose = false)
+        val encoding = Operations.detect(convertedFile, verbose = false)
         encoding should equal(BOMEncoding.ASCII)
       }
   }
