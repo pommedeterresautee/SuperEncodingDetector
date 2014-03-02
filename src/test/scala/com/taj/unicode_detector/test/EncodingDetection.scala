@@ -123,7 +123,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed}" in {
-          val detection = BOM.detect(file.getAbsolutePath, verbose = false)
+          val detection = BOM.detectTest(file.getAbsolutePath, verbose = false)
           detection should equal(fileToTest.encoding)
         }
       }
@@ -143,13 +143,13 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
           workerCount should not equal fileToTest.workingActorsNeeded
         }
 
-        s"should be not detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
-          implicit val timeout = Timeout(20000)
-          val master = system.actorOf(Props(new ASCIIFileAnalyzer(verbose = false, file.getAbsolutePath)), name = s"ActorOf_${fileToTest.fileName}_wrong_parameter")
-          val resultOfTest = Await.result(master ? InitAnalyzeFile(), timeout.duration).asInstanceOf[FullCheckResult]
-          if (resultOfTest.nonMatchingBytePositionInFile.isDefined) println("position: " + resultOfTest.nonMatchingBytePositionInFile.get)
-          resultOfTest.nonMatchingBytePositionInFile.isEmpty should not equal fileToTest.isASCIIContent
-        }
+//        s"should be not detected as${if (!fileToTest.encoding.equals(BOM.ASCII)) " non" else ""} ASCII" in {
+//          implicit val timeout = Timeout(20, TimeUnit.SECONDS)
+//          val master = system.actorOf(Props(new ASCIIFileAnalyzer(verbose = false, file.getAbsolutePath)), name = s"ActorOf_${fileToTest.fileName}_wrong_parameter")
+//          val resultOfTest = Await.result(master ? InitAnalyzeFile(), timeout.duration).asInstanceOf[FullCheckResult]
+//          if (resultOfTest.nonMatchingBytePositionInFile.isDefined) println("position: " + resultOfTest.nonMatchingBytePositionInFile.get)
+//          resultOfTest.nonMatchingBytePositionInFile.isEmpty should not equal fileToTest.isASCIIContent
+//        }
 
         s"should not be detected as encoded with charset ${fileToTest.encoding.charsetUsed}" in {
           val detection = BOM.detect(file.getAbsolutePath, verbose = false)
