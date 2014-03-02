@@ -123,7 +123,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed}" in {
-          val detection = BOM.detectTest(file.getAbsolutePath, verbose = false)
+          val detection = BOM.detect(file.getAbsolutePath, verbose = false)
           detection should equal(fileToTest.encoding)
         }
       }
