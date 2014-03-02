@@ -45,7 +45,12 @@ import java.util.concurrent.TimeUnit
  * @param BOM List of values of the first bytes when file is not an XML.
  * @param BOM_XML List of values of the first bytes when file is an XML.
  */
-case class BOMFileEncoding(charsetUsed: Option[Charset], BOM: List[Int], BOM_XML: List[Int])
+case class BOMFileEncoding(charsetUsed: Option[Charset], BOM: List[Int], BOM_XML: List[Int]) {
+  def charsetName:String = charsetUsed match {
+    case Some(charSet) => charSet.name()
+    case None => "Unknown"
+  }
+}
 
 /**
  * Main class to detect a file encoding based on its BOM.
@@ -106,7 +111,7 @@ object BOM {
             }
           case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during UTF8 no BOM check")
         }
-        println("Shutdown the Akka system")
+        if (verbose) println("Shutdown the Akka system")
         system.shutdown()
         result
     }

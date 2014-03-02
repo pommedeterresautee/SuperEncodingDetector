@@ -35,13 +35,22 @@ import org.rogach.scallop._
 object main extends App {
 
   val testResourcesFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}"
-  val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}UTF8_without_BOM.txt"
+  val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
 
-  val FEC = "C:\\Users\\MBenesty\\Private\\GIT\\unicode_detector\\FEC_EXAMPLE\\FEC.txt"
-  val arg = Array("--encoding", FEC, "--debug")
+  val BIG_FILE = encodedFileFolder + "desc2014.xml"
+  val arg = Array("--encoding", BIG_FILE)
   val help = Array("--help")
+
   val opts = new ScallopConf(arg) {
-    banner( s"""
+    banner("""
+                | ____                          _____                     _                 ____       _            _
+                |/ ___| _   _ _ __   ___ _ __  | ____|_ __   ___ ___   __| (_)_ __   __ _  |  _ \  ___| |_ ___  ___| |_ ___  _ __
+                |\___ \| | | |  _ \ / _ \ '__| |  _| | '_ \ / __/ _ \ / _` | | '_ \ / _` | | | | |/ _ \ __/ _ \/ __| __/ _ \| '__|
+                | ___) | |_| | |_) |  __/ |    | |___| | | | (_| (_) | (_| | | | | | (_| | | |_| |  __/ ||  __/ (__| || (_) | |
+                ||____/ \____| .__/ \___|_|    |_____|_| |_|\___\___/ \____|_|_| |_|\__, | |____/ \___|\__\___|\___|\__\___/|_|
+                |            |_|                                                    |___/
+                |
+              		""".stripMargin + s"""
 SuperEncodingDetector will help you to manage text files in different encoding format.
 This application is good for working with the different Unicode version and ASCII character set but not to manage national specific code pages.
 
@@ -58,28 +67,32 @@ For usage see below:
 
     val encoding = opt[List[String]]("encoding", descr = "Print the detected encoding of each file provided.", validate = filesExist)
     val removeBOM = opt[String]("removeBOM", descr = "Remove the Byte Order Mark from a file. Use output option to provide the destination folder.", validate = new File(_).exists())
+    val convert = opt[String]("convertASCII", descr = "Convert a file from Unicode encoding to ASCII", validate = new File(_).exists())
     val output = opt[String]("output", descr = "Path to the file where to save the result.", validate = !new File(_).exists())
     val merge = opt[List[String]]("merge", descr = "Merge the files provided. Use output option to provide the destination folder.", validate = filesExist)
     val debug = toggle("debug", descrYes = "Display lots of debug information during the process.", descrNo = "Display minimum during the process (same as not using this argument).", default = Some(false), prefix = "no-")
     val help = opt[Boolean]("help", descr = "Show this message.")
     // val version = opt[Boolean]("version", noshort = true, descr = "Print program version.")
     codependent(merge, output)
+    codependent(convert, output)
     conflicts(merge, List(encoding, help /*, version*/))
     conflicts(encoding, List(merge, help /*, version*/))
   }
 
-  val verboseOption = opts.debug.get
-  val verbose = verboseOption match {
-    case Some(true) => true
+  val debugOption = opts.debug.get
+  val debug = debugOption match {
+    case Some(true) =>
+      println("Debug mode activated")
+      true
     case _ => false
   }
-
 
   val optionDetection = opts.encoding.get
   optionDetection match {
     case Some(list) =>
-      list.map(path => (path, BOM.detect(path, verbose))).foreach {
-        case (file, encoding) => println(file + " ; " + encoding.charsetUsed.map(_.name()))
+      list.map(path => (path, BOM.detect(path, debug))).foreach {
+        case (file, encoding) =>
+          println(file + " ; " + encoding.charsetName)
       }
     case _ =>
   }
@@ -88,7 +101,7 @@ For usage see below:
   optionMerge match {
     case Some(list) =>
       if (!BOM.isSameBOM(true, list: _*)) System.exit(1)
-      BOM.mergeFilesWithoutBom(verbose, opts.output.get.get, list: _*)
+      BOM.mergeFilesWithoutBom(debug, opts.output.get.get, list: _*)
     case _ =>
   }
 }

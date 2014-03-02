@@ -42,7 +42,7 @@ sealed trait MessageAKKA
 
 case class InitAnalyzeFile() extends MessageAKKA
 
-case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Int, verbose: Boolean) extends MessageAKKA
+case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Int) extends MessageAKKA
 
 case class Result(actor: ActorRef, pathOfTheFileAnalyzed: String, nonMatchingCharPositionInFile: Option[Long], verbose: Boolean) extends MessageAKKA
 
@@ -131,7 +131,7 @@ class FileAnalyzer(verbose: Boolean, path: String, testToOperate: Array[Byte] =>
   }
 
   val nbrOfWorkers = ParamAKKA.numberOfWorkerRequired(totalLengthToAnalyze)
-  val routerBlockAnalyzer: ActorRef = context.actorOf(Props[BlockAnalyzer].withRouter(RoundRobinRouter(nbrOfWorkers)), name = s"Router_${self.path.name.charAt(0)}")
+  val routerBlockAnalyzer: ActorRef = context.actorOf(Props(new BlockAnalyzer(verbose)).withRouter(RoundRobinRouter(nbrOfWorkers)), name = s"Router_${self.path.name.charAt(0)}")
   var masterSender: Option[ActorRef] = None
   var startAnalyzeTime = 0l
   var resultReceived = 0
@@ -150,9 +150,9 @@ class FileAnalyzer(verbose: Boolean, path: String, testToOperate: Array[Byte] =>
       // Initialization of the workers
       (0 to nbrOfWorkers - 1)
         .foreach(partNumber =>
-        routerBlockAnalyzer ! AnalyzeBlock(path, partNumber * ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.bufferSize, testToOperate, verbose))
+        routerBlockAnalyzer ! AnalyzeBlock(path, partNumber * ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.bufferSize, testToOperate))
 
-      println(s"The sender is ${sender.path} but the parent is ${context.parent.path}")
+      if (verbose) println(s"The sender is ${sender.path} but the parent is ${context.parent.path}")
 
     case Result(actor, filePath, nonMatchingCharPositionInFile, verboseActivated) =>
       resultReceived += 1
@@ -167,21 +167,21 @@ class FileAnalyzer(verbose: Boolean, path: String, testToOperate: Array[Byte] =>
           //Await.result(masterActor ? PoisonPill, timeout.duration)
           if (verboseActivated) println(s"*** Finished Actor ${self.path} process in ${System.currentTimeMillis() - startAnalyzeTime} ***")
         case Some(masterActor) =>
-          actor ! AnalyzeBlock(filePath, resultReceived * ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.bufferSize, testToOperate, verbose)
+          actor ! AnalyzeBlock(filePath, resultReceived * ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.sizeOfaPartToAnalyze, ParamAKKA.bufferSize, testToOperate)
       }
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
 
   override def postStop(): Unit = {
-    println(s"*** Stop Actor ${self.path} ***")
+    if(verbose) println(s"*** Stop Actor ${self.path} ***")
     super.postStop()
   }
 }
 
-private class BlockAnalyzer extends Actor {
+private class BlockAnalyzer(verbose:Boolean) extends Actor {
 
   def receive = {
-    case AnalyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate, verbose) =>
+    case AnalyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate) =>
 
       val ID = startRead / length
       if (verbose) println(s"Start analyze of block $ID [$startRead - ${startRead + length}[ - Ref [${self.path}]")
@@ -222,7 +222,7 @@ private class BlockAnalyzer extends Actor {
   }
 
   override def postStop(): Unit = {
-    println(s"*** Rootee is dead ${self.path} ***")
+    if (verbose) println(s"*** Rootee is dead ${self.path} ***")
     super.postStop()
   }
 }
