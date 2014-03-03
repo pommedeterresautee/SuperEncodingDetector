@@ -31,7 +31,7 @@ package com.taj.unicode_detector
 
 import java.io.{File, FileOutputStream, FileInputStream}
 import java.nio.file.{Paths, Files}
-import java.nio.charset.{Charset, StandardCharsets}
+import java.nio.charset.StandardCharsets
 import akka.actor.{ActorRef, Actor, Props, ActorSystem}
 import akka.util.Timeout
 import scala.concurrent.Await
@@ -41,40 +41,17 @@ import com.taj.unicode_detector.ActorLifeOverview._
 import com.taj.unicode_detector.TestResult.{FinalResult, InitAnalyzeFile}
 
 
-/**
- * Contain properties of each BOM.
- * @param charsetUsed Encoding type.
- * @param BOM List of values of the first bytes when file is not an XML.
- * @param BOM_XML List of values of the first bytes when file is an XML.
- */
-case class BOMFileEncoding(charsetUsed: Option[Charset], BOM: List[Int], BOM_XML: List[Int]) {
-  def charsetName:String = charsetUsed match {
-    case Some(charSet) => charSet.name()
-    case None => "Unknown"
-  }
-}
-
-object BOMEncoding {
-  val UTF32BE = BOMFileEncoding(Some(Charset.forName("UTF-32BE")), List(0x00, 0x00, 0xFE, 0xFF), List(0x00, 0x00, 0x00, '<'))
-  val UTF32LE = BOMFileEncoding(Some(Charset.forName("UTF-32LE")), List(0xFF, 0xFE, 0x00, 0x00), List('<', 0x00, 0x00, 0x00))
-  val UTF32BEUnusual = BOMFileEncoding(Some(Charset.forName("x-UTF-32BE-BOM")), List(0xFE, 0xFF, 0x00, 0x00), List(0x00, '<', 0x00, 0x00))
-  val UTF32LEUnusual = BOMFileEncoding(Some(Charset.forName("x-UTF-32LE-BOM")), List(0x00, 0x00, 0xFF, 0xFE), List(0x00, 0x00, '<', 0x00))
-  val UTF_16_BE = BOMFileEncoding(Some(StandardCharsets.UTF_16BE), List(0xFE, 0xFF), List(0x00, '<', 0x00, '?'))
-  val UTF_16_LE = BOMFileEncoding(Some(StandardCharsets.UTF_16LE), List(0xFF, 0xFE), List('<', 0x00, '?', 0x00))
-  val UTF8 = BOMFileEncoding(Some(StandardCharsets.UTF_8), List(0xEF, 0xBB, 0xBF), List(0x4C, 0x6F, 0xA7, 0x94))
-  val UTF8NoBOM = BOMFileEncoding(Some(StandardCharsets.UTF_8), List(), List('<', '?', 'x', 'm'))
-  val ASCII = BOMFileEncoding(Some(StandardCharsets.US_ASCII), List(), List('<', '?', 'x', 'm'))
-  val UnknownEncoding = BOMFileEncoding(None, List(), List())
-}
-
 object TestResult{
-  case class InitAnalyzeFile(file: String, verbose: Boolean)
+
+  case class InitAnalyzeFile()
+
   case class ResultOfTestBOM(result:Option[BOMFileEncoding])
   case class ResultOfTestFullFileAnalyze(category:BOMFileEncoding, nonMatchingBytePositionInFile: Option[Long], timeElapsed: Long, reaper:ActorRef)
   case class FinalResult(result:BOMFileEncoding)
 }
 
-class Detection() extends Actor{
+class Detection(file: String, verbose: Boolean) extends Actor {
+
   import BOMEncoding._
   import TestResult._
 
@@ -82,23 +59,22 @@ class Detection() extends Actor{
   var mVerbose:Option[Boolean] = None
   var mFile:Option[String] = None
 
-
   var mOriginalSender: Option[ActorRef] = None
   
   def receive = {
-    case InitAnalyzeFile(file, verbose) =>
+    case InitAnalyzeFile() =>
       mFile = Some(file)
       mVerbose = Some(verbose)
       mOriginalSender = Some(sender)
-      val BOMActor = context.system.actorOf(Props[BOMBasedDetectionActor], name = "BOMActor")
-      BOMActor ! InitAnalyzeFile(mFile.get, mVerbose.get)
+      val BOMActor = context.system.actorOf(Props(new BOMBasedDetectionActor(file, verbose)), name = "BOMActor")
+      BOMActor ! InitAnalyzeFile()
     case ResultOfTestBOM(Some(detectedEncoding)) =>
       mOriginalSender.get ! FinalResult(detectedEncoding)
     case ResultOfTestBOM(None) =>
       val asciiReaper = context.system.actorOf(Props(new Reaper(mVerbose.get)), "ASCIIReaper")
       val mActorASCIIActorRef = context.system.actorOf(Props(new FileAnalyzer(ASCII, mVerbose.get, mFile.get, ParamAkka.checkASCII)), name = "ASCIIFileAnalyzer")
       mActorASCIIActorRef ! StartRegistration(asciiReaper)
-      mActorASCIIActorRef ! InitAnalyzeFile(mFile.get, mVerbose.get)
+      mActorASCIIActorRef ! InitAnalyzeFile()
     case ResultOfTestFullFileAnalyze(ASCII, None, _, reaper) =>
       mOriginalSender.get ! FinalResult(ASCII)
       reaper ! KillAkka()
@@ -106,7 +82,7 @@ class Detection() extends Actor{
       val UTF8Reaper = context.system.actorOf(Props(new Reaper(mVerbose.get)), "UTF8Reaper")
       val mActorUTF8ActorRef = context.system.actorOf(Props(new FileAnalyzer(UTF8NoBOM, mVerbose.get, mFile.get, ParamAkka.checkUTF8)), name = "UTF8FileAnalyzer")
       mActorUTF8ActorRef ! StartRegistration(UTF8Reaper)
-      mActorUTF8ActorRef ! InitAnalyzeFile(mFile.get, mVerbose.get)
+      mActorUTF8ActorRef ! InitAnalyzeFile()
     case ResultOfTestFullFileAnalyze(UTF8NoBOM, None, time, reaper) =>
       mOriginalSender.get ! FinalResult(UTF8NoBOM)
       reaper ! KillAkka()
@@ -117,50 +93,6 @@ class Detection() extends Actor{
 }
 
 /**
- * This class detects the encoding of a file based on its BOM.
- */
-class BOMBasedDetectionActor() extends Actor {
-  import BOMEncoding._
-  import TestResult._
-  import akka.actor.PoisonPill
-  
-  def receive = {
-    case InitAnalyzeFile(file, verbose) => 
-      sender ! ResultOfTestBOM(detect(file, verbose))   
-      self ! PoisonPill
-    case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
-  }
-
-  /**
-   * Detects the encoding of a file based on its BOM.
-   * @param file path to the file.
-   * @return the encoding. If no BOM detected, send back ASCII encoding.
-   */
-  def detect(file: String, verbose: Boolean): Option[BOMFileEncoding] = {
-    val in = new FileInputStream(file)
-    val bytesToRead = 1024 // enough to read most XML encoding declarations
-
-    // This may fail if there are a lot of space characters before the end
-    // of the encoding declaration
-    in mark bytesToRead
-    val bytes = List(in.read, in.read, in.read, in.read)
-    in.close() // To make the file deletable after processing!
-
-    bytes match {
-      case UTF32BE.BOM | UTF32BE.BOM_XML => Some(UTF32BE)
-      case UTF32LE.BOM | UTF32LE.BOM_XML => Some(UTF32LE)
-      case UTF32LEUnusual.BOM | UTF32LEUnusual.BOM_XML => Some(UTF32LEUnusual)
-      case UTF32BEUnusual.BOM | UTF32BEUnusual.BOM_XML => Some(UTF32BEUnusual)
-      case UTF_16_BE.BOM :+ _ :+ _ | UTF_16_BE.BOM_XML => Some(UTF_16_BE)
-      case UTF_16_LE.BOM :+ _ :+ _ | UTF_16_LE.BOM_XML => Some(UTF_16_LE)
-      case UTF8.BOM :+ _ | UTF8.BOM_XML => Some(UTF8)
-      case _ => None
-    }
-  }
-}
-
-
-/**
  * Main class to detect a file encoding based on its BOM.
  */
 object Operations {
@@ -169,8 +101,8 @@ object Operations {
     implicit val timeout = Timeout(2, TimeUnit.MINUTES)
 
     val system: ActorSystem = ActorSystem("ActorSystemFileIdentification")
-    val detector = system.actorOf(Props[Detection], name = "Detector")
-    Await.result(detector ? InitAnalyzeFile(file, verbose), timeout.duration) match {
+    val detector = system.actorOf(Props(new Detection(file, verbose)), name = "Detector")
+    Await.result(detector ? InitAnalyzeFile(), timeout.duration) match {
       case FinalResult(detectedEncoding) => detectedEncoding
       case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during the check")
     }

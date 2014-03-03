@@ -65,9 +65,9 @@ class FileAnalyzer(encodingTested:BOMFileEncoding , verbose: Boolean, path: Stri
       mReaper = Some(register)
       mReaper.get ! RegisterRooter(routerBlockAnalyzer)
       routerBlockAnalyzer ! Broadcast(RegisterMe(mReaper.get))
-    
-    case InitAnalyzeFile(_, _) =>
-      startAnalyzeTime = System.currentTimeMillis
+
+    case InitAnalyzeFile() =>
+    startAnalyzeTime = System.currentTimeMillis
       masterSender = Some(sender)
 
       if (verbose) println (

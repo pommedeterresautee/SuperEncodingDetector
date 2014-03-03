@@ -38,7 +38,7 @@ object main extends App {
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
 
   val BIG_FILE = encodedFileFolder + "UTF8_without_BOM_big_file.txt"
-  val arg = Array("--encoding", BIG_FILE)
+  val arg = Array("--encoding", BIG_FILE, "--debug")
   val help = Array("--help")
 
   val opts = new ScallopConf(arg) {
