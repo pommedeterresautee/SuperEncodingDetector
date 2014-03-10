@@ -67,14 +67,15 @@ For usage see below:
 
     val encoding = opt[List[String]]("encoding", descr = "Print the detected encoding of each file provided.", validate = filesExist)
     val removeBOM = opt[String]("removeBOM", descr = "Remove the Byte Order Mark from a file. Use output option to provide the destination folder.", validate = new File(_).exists())
-    val convert = opt[String]("convertASCII", descr = "Convert a file from Unicode encoding to ASCII", validate = new File(_).exists())
+    val convertUTF8 = opt[String]("convertUTF8", descr = "Convert a file from any format to UTF-8", validate = new File(_).exists())
+    val convertASCII = opt[String]("convertASCII", descr = "Convert a file from Unicode encoding to ASCII", validate = new File(_).exists())
     val output = opt[String]("output", descr = "Path to the file where to save the result.", validate = !new File(_).exists())
     val merge = opt[List[String]]("merge", descr = "Merge the files provided. Use output option to provide the destination folder.", validate = filesExist)
     val debug = toggle("debug", descrYes = "Display lots of debug information during the process.", descrNo = "Display minimum during the process (same as not using this argument).", default = Some(false), prefix = "no-")
     val help = opt[Boolean]("help", descr = "Show this message.")
     // val version = opt[Boolean]("version", noshort = true, descr = "Print program version.")
     codependent(merge, output)
-    codependent(convert, output)
+    codependent(convertASCII, output)
     conflicts(merge, List(encoding, help /*, version*/))
     conflicts(encoding, List(merge, help /*, version*/))
   }

@@ -31,8 +31,10 @@ package com.taj.unicode_detector
 
 import java.text.Normalizer
 import java.nio.charset.{StandardCharsets, Charset}
-import scala.io.Source
-import java.io.{InputStream, FileOutputStream, OutputStreamWriter, BufferedWriter}
+import scala.io.{BufferedSource, Source}
+import java.io._
+import com.ibm.icu.text.CharsetDetector
+import scala.Some
 
 /**
  * Convert text files to a specific format.
@@ -43,21 +45,40 @@ object Converter {
       .normalize(text, Normalizer.Form.NFD)
       .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
 
+  private val noTransformation: String => String = line => line
+
   /**
    * Convert a text file to ASCII.
    * @param sourcePath path to the source file.
    * @param destinationPath path to the final file.
-   * @param encodingSource type of encoding for the original file.
    * @param verbose print more information.
    */
-  def convert2ASCII(sourcePath: String, destinationPath: String, encodingSource: BOMFileEncoding, verbose: Boolean) = convert(Operations.removeBOM(verbose, encodingSource, sourcePath), destinationPath, encodingSource.charsetUsed, encodingDestination = StandardCharsets.US_ASCII, convertAnyStringToASCII)
+  def convert2ASCII(sourcePath: String, destinationPath: String, verbose: Boolean) = convertWithTransformation(sourcePath, destinationPath, verbose, StandardCharsets.US_ASCII, convertAnyStringToASCII)
 
-  private def convert(sourceIS: InputStream, destinationPath: String, encodingSource: Option[Charset], encodingDestination: Charset, transformation: String => String) {
-    val content = encodingSource match {
-      case Some(charset) => Source.fromInputStream(sourceIS, encodingSource.get.name())
-      case None => throw new IllegalStateException("Try to convert a file to an Unknown charset (not detected)")
+  /**
+   * Convert from a format to UTF-8.
+   * @param sourcePath path to the source file.
+   * @param destinationPath path to the final file.
+   * @param verbose print more information.
+   */
+  def convert2UTF_8(sourcePath: String, destinationPath: String, verbose: Boolean) = convertWithTransformation(sourcePath, destinationPath, verbose, StandardCharsets.UTF_8, noTransformation)
+
+  /**
+   * Convert from a format to ISO-8859-15.
+   * @param sourcePath path to the source file.
+   * @param destinationPath path to the final file.
+   * @param verbose print more information.
+   */
+  def convert2ISO_8859_15(sourcePath: String, destinationPath: String, verbose: Boolean) = convertWithTransformation(sourcePath, destinationPath, verbose, Charset.forName("ISO-8859-15"), noTransformation)
+
+  private def convertWithTransformation(sourcePath: String, destinationPath: String, verbose: Boolean, destinationEncoding: Charset, transformation: String => String) {
+    val sourceEncoding: Charset = detectEncoding(sourcePath)
+    val sourceIS: FileInputStream = BOMEncoding.getBOMfromCharset(sourceEncoding) match {
+      case Some(bom) => Operations.removeBOM(verbose, bom, sourcePath)
+      case None => new FileInputStream(sourcePath)
     }
-    val output = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(destinationPath), encodingDestination.name()))
+    val content: BufferedSource = Source.fromInputStream(sourceIS, sourceEncoding.name())
+    val output = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(destinationPath), destinationEncoding.name()))
     try {
       val buffer = content.getLines()
       buffer
@@ -67,5 +88,21 @@ object Converter {
       content.close()
       output.close()
     }
+  }
+
+  /**
+   * Detects the encoding of a text file based on Heuristic analyze.
+   * @param path path to the file to analyze.
+   * @return the name of the encoding as a String.
+   */
+  def detectEncoding(path: String): Charset = {
+    val detector = new CharsetDetector()
+    val byteData = new Array[Byte](1024 * 30)
+    val is = new FileInputStream(path)
+    try is.read(byteData)
+    finally is.close()
+    detector.setText(byteData)
+    val matcher = detector.detect()
+    Charset.forName(matcher.getName)
   }
 }

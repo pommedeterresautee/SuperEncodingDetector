@@ -50,6 +50,18 @@ case class BOMFileEncoding(charsetUsed: Option[Charset], BOM: List[Int], BOM_XML
  * List all the encoding types detected.
  */
 object BOMEncoding {
+
+  /**
+   * Get a list of existing BOMs.
+   * @return the different sorts of BOMs
+   */
+  def values = Seq(UTF32BE, UTF32LE, UTF32BEUnusual, UTF32LEUnusual, UTF_16_BE, UTF_16_LE, UTF8, UTF8NoBOM, ASCII, UnknownEncoding)
+
+  def getBOMfromCharset(charset: Charset): Option[BOMFileEncoding] = values.find(_.charsetUsed match {
+    case Some(charSet) => charSet.name().contentEquals(charset.name())
+    case None => false
+  })
+
   val UTF32BE = BOMFileEncoding(Some(Charset.forName("UTF-32BE")), List(0x00, 0x00, 0xFE, 0xFF), List(0x00, 0x00, 0x00, '<'))
   val UTF32LE = BOMFileEncoding(Some(Charset.forName("UTF-32LE")), List(0xFF, 0xFE, 0x00, 0x00), List('<', 0x00, 0x00, 0x00))
   val UTF32BEUnusual = BOMFileEncoding(Some(Charset.forName("x-UTF-32BE-BOM")), List(0xFE, 0xFF, 0x00, 0x00), List(0x00, '<', 0x00, 0x00))
