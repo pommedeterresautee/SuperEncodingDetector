@@ -31,14 +31,17 @@ package com.taj.unicode_detector
 
 import java.io.{File, FileOutputStream, FileInputStream}
 import java.nio.file.{Paths, Files}
-import java.nio.charset.StandardCharsets
-import akka.actor.{ActorRef, Actor, Props, ActorSystem}
+import java.nio.charset.Charset
+import akka.actor._
 import akka.util.Timeout
 import scala.concurrent.Await
 import akka.pattern.ask
 import java.util.concurrent.TimeUnit
-import com.taj.unicode_detector.ActorLifeOverview._
-import com.taj.unicode_detector.TestResult.{FinalResult, InitAnalyzeFile}
+import com.taj.unicode_detector.ActorLifeOverview.StartRegistration
+import com.taj.unicode_detector.TestResult.FinalResult
+import scala.Some
+import com.taj.unicode_detector.ActorLifeOverview.KillAkka
+import com.taj.unicode_detector.TestResult.InitAnalyzeFile
 
 
 object TestResult{
@@ -93,6 +96,37 @@ class Detection(file: String, verbose: Boolean) extends Actor {
 }
 
 /**
+ * First try to detect on the BOM then on the content.
+ * @param file path to the file to test.
+ * @param verbose true to display more information.
+ */
+class MiniDetection(file: String, verbose: Boolean) extends Actor {
+
+  import TestResult._
+
+  var mActorUTF8: Option[ActorRef] = None
+  var mVerbose: Option[Boolean] = None
+  var mFile: Option[String] = None
+
+  var mOriginalSender: Option[ActorRef] = None
+
+  def receive = {
+    case InitAnalyzeFile() =>
+      mFile = Some(file)
+      mVerbose = Some(verbose)
+      mOriginalSender = Some(sender)
+      val BOMActor = context.system.actorOf(Props(new BOMBasedDetectionActor(file, verbose)), name = "BOMActor")
+      BOMActor ! InitAnalyzeFile()
+    case ResultOfTestBOM(Some(detectedEncoding)) =>
+      mOriginalSender.get ! detectedEncoding.charsetUsed
+
+    case ResultOfTestBOM(None) =>
+      mOriginalSender.get ! Converter.detectEncoding(file)
+
+  }
+}
+
+/**
  * Main class to detect a file encoding based on its BOM.
  */
 object Operations {
@@ -106,6 +140,21 @@ object Operations {
       case FinalResult(detectedEncoding) => detectedEncoding
       case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during the check")
     }
+  }
+
+  def miniDetect(file: String, verbose: Boolean): Charset = {
+
+
+    implicit val timeout = Timeout(2, TimeUnit.MINUTES)
+
+    val system: ActorSystem = ActorSystem("SystemEncodingFileIdentification")
+    val detector = system.actorOf(Props(new MiniDetection(file, verbose)), name = "MiniDetector")
+    val result = Await.result(detector ? InitAnalyzeFile(), timeout.duration) match {
+      case charset: Charset => charset
+      case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor.")
+    }
+    system.shutdown()
+    result
   }
 
   /**

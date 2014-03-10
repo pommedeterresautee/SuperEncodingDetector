@@ -74,7 +74,6 @@ object BOMEncoding {
   val UnknownEncoding = BOMFileEncoding(None, List(), List())
 }
 
-
 /**
  * This class detects the encoding of a file based on its BOM.
  */
@@ -96,7 +95,7 @@ class BOMBasedDetectionActor(file: String, verbose: Boolean) extends Actor {
    * @param file path to the file.
    * @return the encoding. If no BOM detected, send back ASCII encoding.
    */
-  def detect(file: String, verbose: Boolean): Option[BOMFileEncoding] = {
+  private def detect(file: String, verbose: Boolean): Option[BOMFileEncoding] = {
     val in = new FileInputStream(file)
     val bytesToRead = 1024 // enough to read most XML encoding declarations
 
