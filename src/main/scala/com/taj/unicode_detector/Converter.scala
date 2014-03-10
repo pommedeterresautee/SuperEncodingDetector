@@ -82,7 +82,7 @@ object Converter {
     try {
       val buffer = content.getLines()
       buffer
-        .map(lineOfText => transformation(lineOfText) + (if (buffer.hasNext) "\n" else ""))
+        .map(lineOfText => transformation(lineOfText) + (if (buffer.hasNext) sys.props("line.separator") else ""))
         .foreach(output.write)
     } finally {
       content.close()

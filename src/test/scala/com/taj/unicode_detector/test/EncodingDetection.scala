@@ -165,7 +165,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
 
       s"${first.fileName} and ${second.fileName}" must {
         "have the same detected BOM" in {
-          val same = Operations.isSameBOM(true, firstPath, secondPath)
+          val same = Operations.isSameEncoding(true, firstPath, secondPath)
           same should be(true)
         }
 
@@ -177,11 +177,11 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
       }
   }
 
-  Seq((UTF8_with_BOM, UTF8_without_BOM), (UTF16_BE, UTF8_with_BOM), (UTF8_with_BOM, UTF16_LE), (UTF16_BE, UTF16_LE)).foreach {
+  Seq((Windows_1252, ASCII), (UTF16_BE, UTF8_with_BOM), (UTF8_with_BOM, UTF16_LE), (UTF16_BE, UTF16_LE)).foreach {
     case (file1, file2) =>
       s"${file1.fileName} and ${file2.fileName}" must {
         "have different detected BOM" in {
-          val same = Operations.isSameBOM(false, encodedFileFolder + file1.fileName, encodedFileFolder + file2.fileName)
+          val same = Operations.isSameEncoding(false, encodedFileFolder + file1.fileName, encodedFileFolder + file2.fileName)
           same should be(false)
         }
       }

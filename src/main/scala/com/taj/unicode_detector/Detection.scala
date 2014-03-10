@@ -142,35 +142,39 @@ object Operations {
     }
   }
 
+  /**
+   * Detects the encoding of a file based on their BOM or their content.
+   * @param file path to the file to analyze.
+   * @param verbose true if needs to display more information.
+   * @return the charset detected.
+   */
   def miniDetect(file: String, verbose: Boolean): Charset = {
-
-
     implicit val timeout = Timeout(2, TimeUnit.MINUTES)
-
     val system: ActorSystem = ActorSystem("SystemEncodingFileIdentification")
     val detector = system.actorOf(Props(new MiniDetection(file, verbose)), name = "MiniDetector")
     val result = Await.result(detector ? InitAnalyzeFile(), timeout.duration) match {
       case charset: Charset => charset
-      case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor.")
+      case Some(charset: Charset) => charset
+      case u => throw new IllegalArgumentException(s"Failed to retrieve result from Actor: $u.")
     }
     system.shutdown()
     result
   }
 
   /**
-   * Compare files given in parameter to the BOM in parameters to determine if they are all the same.
+   * Compare encoding of several files.
    * @param verbose print some helpful messages.
    * @param paths paths to the files to compare.
    * @return true if the encoding is the same everywhere.
    */
-  def isSameBOM(verbose: Boolean, paths: String*): Boolean = {
+  def isSameEncoding(verbose: Boolean, paths: String*): Boolean = {
     if (paths.size < 2) throw new IllegalArgumentException(s"Not enough files to compare (${paths.size})")
-    val bom: BOMFileEncoding = detect(paths.head, verbose)
+    val charset: Charset = miniDetect(paths.head, verbose)
     paths.tail.forall {
       path: String =>
-        val detectedBOM = detect(path, verbose)
-        val same = bom.equals(detectedBOM)
-        if (!same && verbose) println(s"The first file [${paths.head}] is encoded as ${bom.charsetUsed} but the file [$path] is encoded as ${detectedBOM.charsetUsed}.")
+        val detectedEncoding: Charset = miniDetect(path, verbose)
+        val same = charset.equals(detectedEncoding)
+        if (!same && verbose) println(s"The first file [${paths.head}] is encoded as ${charset.name()} but the file [$path] is encoded as ${detectedEncoding.name}.")
         same
     }
   }

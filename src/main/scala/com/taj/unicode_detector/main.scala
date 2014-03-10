@@ -29,7 +29,7 @@
 
 package com.taj.unicode_detector
 
-import java.io.File
+import java.io.{BufferedWriter, FileWriter, File}
 import org.rogach.scallop._
 
 object main extends App {
@@ -38,10 +38,11 @@ object main extends App {
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
 
   val BIG_FILE = encodedFileFolder + "UTF8_without_BOM_big_file.txt"
-  val arg = Array("--encoding", BIG_FILE)
+  val SECOND_FILE = encodedFileFolder + "UTF16_LE.txt"
+  val arg = Array("--UTF8convert", SECOND_FILE, "--output", testResourcesFolder + "test.txt")
   val help = Array("--help")
 
-  val opts = new ScallopConf(arg) {
+  val opts = new ScallopConf(help) {
     banner("""
                 | ____                          _____                     _                 ____       _            _
                 |/ ___| _   _ _ __   ___ _ __  | ____|_ __   ___ ___   __| (_)_ __   __ _  |  _ \  ___| |_ ___  ___| |_ ___  _ __
@@ -66,43 +67,58 @@ For usage see below:
     val filesExist: List[String] => Boolean = _.forall(new File(_).exists())
 
     val encoding = opt[List[String]]("encoding", descr = "Print the detected encoding of each file provided.", validate = filesExist)
-    val removeBOM = opt[String]("removeBOM", descr = "Remove the Byte Order Mark from a file. Use output option to provide the destination folder.", validate = new File(_).exists())
-    val convert8859_15 = opt[List[String]]("convert8859", descr = "Convert a file from any format to ISO 8859-15", validate = filesExist)
-    val convertUTF8 = opt[List[String]]("convertUTF8", descr = "Convert a file from any format to UTF-8", validate = filesExist)
-    val convertASCII = opt[List[String]]("convertASCII", descr = "Convert a file from Unicode encoding to ASCII", validate = filesExist)
+    //val removeBOM = opt[String]("removeBOM", descr = "Remove the Byte Order Mark from a file. Use output option to provide the destination folder.", validate = new File(_).exists())
+    val convert8859_15 = opt[List[String]]("ISO8859convert", descr = "Convert a file from any format to ISO 8859-15. Use with outputFolder.", validate = filesExist)
+    val convertUTF8 = opt[List[String]]("UTF8convert", descr = "Convert a file from any format to UTF-8. Use with outputFolder.", validate = filesExist)
+    //val convertASCII = opt[List[String]]("ASCIIconvert", descr = "Convert a file from Unicode encoding to ASCII. Use with outputFolder.", validate = filesExist)
     val output = opt[String]("output", descr = "Path to the file where to save the result.", validate = !new File(_).exists())
+    val outputFolder = opt[String]("output", descr = "Path to the folder where to save the conversion results.", validate = new File(_).isDirectory())
     val merge = opt[List[String]]("merge", descr = "Merge the files provided. Use output option to provide the destination folder.", validate = filesExist)
     val debug = toggle("debug", descrYes = "Display lots of debug information during the process.", descrNo = "Display minimum during the process (same as not using this argument).", default = Some(false), prefix = "no-")
     val help = opt[Boolean]("help", descr = "Show this message.")
     // val version = opt[Boolean]("version", noshort = true, descr = "Print program version.")
-    codependent(merge, output)
-    codependent(convertASCII, output)
+    dependsOnAll(merge, List(outputFolder))
+    dependsOnAll(convertUTF8, List(outputFolder))
+    dependsOnAll(convert8859_15, List(outputFolder))
+    //dependsOnAll(convertASCII, List(outputFolder))
+
     conflicts(merge, List(encoding, help /*, version*/))
     conflicts(encoding, List(merge, help /*, version*/))
   }
 
-  val debugOption = opts.debug.get
-  val debug = debugOption match {
-    case Some(true) =>
-      println("Debug mode activated")
-      true
-    case _ => false
+  val debug: Boolean = opts.debug.get.getOrElse(false)
+
+  opts.encoding.get.map(_.map(path => (path, Operations.miniDetect(path, debug))).foreach {
+    case (file, encoding) if opts.output.get.isEmpty => println(file + " ; " + encoding.name())
+    case (file, encoding) if opts.output.get.isDefined =>
+      val w = new BufferedWriter(new FileWriter(opts.output.get.get, true))
+      w.write(file + " ; " + encoding.name())
+      w.newLine()
+      w.close()
+    case _ => throw new IllegalArgumentException("Wrong argument provided")
+  })
+
+  val convert8859_15 = opts.convert8859_15.get
+  convert8859_15 match {
+    case Some(list: List[String]) =>
+      list.foreach(file => Converter.convert2ISO_8859_15(file,
+        new File(opts.output.get.get, new File(file).getName).getAbsolutePath, debug))
+    case None =>
   }
 
-  val optionDetection = opts.encoding.get
-  optionDetection match {
-    case Some(list) =>
-      list.map(path => (path, Operations.miniDetect(path, debug))).foreach {
-        case (file, encoding) => println(file + " ; " + encoding.name())
-      }
-    case _ =>
+  val convertUTF8 = opts.convertUTF8.get
+  convertUTF8 match {
+    case Some(list: List[String]) =>
+      list.foreach(file => Converter.convert2UTF_8(file,
+        new File(opts.output.get.get, new File(file).getName).getAbsolutePath, debug))
+    case None =>
   }
 
   val optionMerge = opts.merge.get
   optionMerge match {
     case Some(list) =>
-      if (!Operations.isSameBOM(true, list: _*)) System.exit(1)
+      if (!Operations.isSameEncoding(true, list: _*)) System.exit(1)
       Operations.mergeFilesWithoutBom(debug, opts.output.get.get, list: _*)
-    case _ =>
+    case None =>
   }
 }
