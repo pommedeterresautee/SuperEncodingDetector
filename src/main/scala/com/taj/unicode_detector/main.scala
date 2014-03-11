@@ -39,10 +39,11 @@ object main extends App {
 
   val BIG_FILE = encodedFileFolder + "UTF8_without_BOM_big_file.txt"
   val SECOND_FILE = encodedFileFolder + "UTF16_LE.txt"
-  val arg = Array("--UTF8convert", SECOND_FILE, "--output", testResourcesFolder + "test.txt")
+  val test = "E:\\TAKEDA\\7857502660FEC20111231.ASC"
+  val arg = Array("--encoding", test)
   val help = Array("--help")
 
-  val opts = new ScallopConf(help) {
+  val opts = new ScallopConf(arg) {
     banner("""
                 | ____                          _____                     _                 ____       _            _
                 |/ ___| _   _ _ __   ___ _ __  | ____|_ __   ___ ___   __| (_)_ __   __ _  |  _ \  ___| |_ ___  ___| |_ ___  _ __
@@ -72,7 +73,7 @@ For usage see below:
     val convertUTF8 = opt[List[String]]("UTF8convert", descr = "Convert a file from any format to UTF-8. Use with outputFolder.", validate = filesExist)
     //val convertASCII = opt[List[String]]("ASCIIconvert", descr = "Convert a file from Unicode encoding to ASCII. Use with outputFolder.", validate = filesExist)
     val output = opt[String]("output", descr = "Path to the file where to save the result.", validate = !new File(_).exists())
-    val outputFolder = opt[String]("output", descr = "Path to the folder where to save the conversion results.", validate = new File(_).isDirectory())
+    val outputFolder = opt[String]("outputFolder", descr = "Path to the folder where to save the conversion results.", validate = new File(_).isDirectory)
     val merge = opt[List[String]]("merge", descr = "Merge the files provided. Use output option to provide the destination folder.", validate = filesExist)
     val debug = toggle("debug", descrYes = "Display lots of debug information during the process.", descrNo = "Display minimum during the process (same as not using this argument).", default = Some(false), prefix = "no-")
     val help = opt[Boolean]("help", descr = "Show this message.")
@@ -80,7 +81,7 @@ For usage see below:
     dependsOnAll(merge, List(outputFolder))
     dependsOnAll(convertUTF8, List(outputFolder))
     dependsOnAll(convert8859_15, List(outputFolder))
-    //dependsOnAll(convertASCII, List(outputFolder))
+//    dependsOnAll(convertASCII, List(outputFolder))
 
     conflicts(merge, List(encoding, help /*, version*/))
     conflicts(encoding, List(merge, help /*, version*/))
