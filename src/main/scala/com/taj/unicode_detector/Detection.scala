@@ -89,7 +89,7 @@ class Detection(file: String) extends Actor {
       mOriginalSender.get ! ResultOfTestBOM(Some(UTF8NoBOM))
       reaper ! KillAkka()
     case ResultOfTestFullFileAnalyze(UTF8NoBOM, Some(position), time, reaper) =>
-      mOriginalSender.get ! ResultOfTestBOM(Some(UnknownEncoding))
+      mOriginalSender.get ! ResultOfTestBOM(Some(BOMFileEncoding(Converter.detectEncoding(file), List(), List())))
       reaper ! KillAkka()
   }
 }
@@ -140,7 +140,7 @@ object Operations extends Logging {
     val system: ActorSystem = ActorSystem("ActorSystemFileIdentification")
     val detector = system.actorOf(Props(new Detection(file)), name = "Detector")
     Await.result(detector ? InitAnalyzeFile(), timeout.duration) match {
-      case ResultOfTestBOM(Some(detectedEncoding)) => detectedEncoding.charsetUsed.get
+      case ResultOfTestBOM(Some(detectedEncoding)) => detectedEncoding.charsetUsed
       case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during the check")
     }
   }
@@ -183,12 +183,11 @@ object Operations extends Logging {
 
   /**
    * Remove the bytes relative to the detected BOM of an existing text file.
-   * @param charset the encoding of the file.
    * @param path the path to the file to the file.
    * @return
    */
-  def removeBOM(charset: Charset, path: String): FileInputStream = {
-    BOMEncoding.getBOMfromCharset(charset) match {
+  def removeBOM(path: String): FileInputStream = {
+    BOMEncoding.detect(path) match {
       case None => new FileInputStream(path)
       case Some(bom) =>
         val toDrop = bom.BOM.size
@@ -206,13 +205,12 @@ object Operations extends Logging {
    * @param verbose true to see more information about the process ongoing.
    */
   def copyWithoutBom(from: String, to: String, verbose: Boolean) {
-    val bomFrom = detect(from)
     val fileTo = new File(to)
     if (fileTo.exists()) fileTo.delete()
     if (fileTo.exists()) throw new IllegalStateException(s"File $to can't be deleted.")
     val output = new FileOutputStream(fileTo)
 
-    val input = removeBOM(bomFrom, from)
+    val input = removeBOM(from)
     val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
     try {
       Iterator
@@ -236,7 +234,7 @@ object Operations extends Logging {
     val output = new FileOutputStream(destination, true)
     try paths.drop(1).foreach {
       path =>
-        val input = removeBOM(detect(path), path)
+        val input = removeBOM(path)
         try Iterator
           .continually(input.read(bytes))
           .takeWhile(-1 !=)

@@ -71,7 +71,7 @@ object Converter {
   private def convertWithTransformation(sourcePath: String, destinationPath: String, destinationEncoding: Charset, transformation: String => String) {
     val sourceEncoding: Charset = detectEncoding(sourcePath)
     val sourceIS: FileInputStream = BOMEncoding.getBOMfromCharset(sourceEncoding) match {
-      case Some(bom) => Operations.removeBOM(bom.charsetUsed.get, sourcePath)
+      case Some(bom) => Operations.removeBOM(sourcePath)
       case None => new FileInputStream(sourcePath)
     }
     val content: BufferedSource = Source.fromInputStream(sourceIS, sourceEncoding.name())

@@ -57,7 +57,7 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
   }
 
   val nbrOfWorkers = ParamAkka.numberOfWorkerRequired(totalLengthToAnalyze)
-  val routerBlockAnalyzer: ActorRef = context.actorOf(Props(new BlockAnalyzer()).withRouter(RoundRobinRouter(nbrOfWorkers)), name = s"Router_${encodingTested.charsetName}")
+  val routerBlockAnalyzer: ActorRef = context.actorOf(Props(new BlockAnalyzer()).withRouter(RoundRobinRouter(nbrOfWorkers)), name = s"Router_${encodingTested.charsetUsed.name()}")
 
   var masterSender: Option[ActorRef] = None
   var mReaper: Option[ActorRef] = None

@@ -39,12 +39,8 @@ import java.io.FileInputStream
  * @param BOM List of values of the first bytes when file is not an XML.
  * @param BOM_XML List of values of the first bytes when file is an XML.
  */
-case class BOMFileEncoding(charsetUsed: Charset, BOM: List[Int], BOM_XML: List[Int]) {
-  def charsetName: String = charsetUsed match {
-    case charSet:Charset => charSet.name()
-    case None => "Unknown"
-  }
-}
+case class BOMFileEncoding(charsetUsed: Charset, BOM: List[Int], BOM_XML: List[Int])
+
 
 /**
  * List all the encoding types detected.
@@ -55,12 +51,9 @@ object BOMEncoding {
    * Get a list of existing BOMs.
    * @return the different sorts of BOMs
    */
-  def values = Seq(UTF32BE, UTF32LE, UTF32BEUnusual, UTF32LEUnusual, UTF_16_BE, UTF_16_LE, UTF8, UTF8NoBOM, ASCII, UnknownEncoding)
+  def values = Seq(UTF32BE, UTF32LE, UTF32BEUnusual, UTF32LEUnusual, UTF_16_BE, UTF_16_LE, UTF8, UTF8NoBOM, ASCII)
 
-  def getBOMfromCharset(charset: Charset): Option[BOMFileEncoding] = values.find(_.charsetUsed match {
-    case charSet:Charset => charSet.name().contentEquals(charset.name())
-    case None => false
-  })
+  def getBOMfromCharset(charset: Charset): Option[BOMFileEncoding] = values.find(_.charsetUsed.name().contentEquals(charset.name()))
 
   val UTF32BE = BOMFileEncoding(Charset.forName("UTF-32BE"), List(0x00, 0x00, 0xFE, 0xFF), List(0x00, 0x00, 0x00, '<'))
   val UTF32LE = BOMFileEncoding(Charset.forName("UTF-32LE"), List(0xFF, 0xFE, 0x00, 0x00), List('<', 0x00, 0x00, 0x00))
@@ -71,31 +64,15 @@ object BOMEncoding {
   val UTF8 = BOMFileEncoding(StandardCharsets.UTF_8, List(0xEF, 0xBB, 0xBF), List(0x4C, 0x6F, 0xA7, 0x94))
   val UTF8NoBOM = BOMFileEncoding(StandardCharsets.UTF_8, List(), List('<', '?', 'x', 'm'))
   val ASCII = BOMFileEncoding(StandardCharsets.US_ASCII, List(), List('<', '?', 'x', 'm'))
-  val UnknownEncoding = BOMFileEncoding(Charset.forName("") , List(), List()) //TODO replace by a setable charset at the construction of the instance
-}
+  //val UnknownEncoding = BOMFileEncoding(Charset.forName("") , List(), List()) //TODO replace by a setable charset at the construction of the instance
 
-/**
- * This class detects the encoding of a file based on its BOM.
- */
-class BOMBasedDetectionActor(file: String) extends Actor {
-
-  import BOMEncoding._
-  import TestResult._
-  import akka.actor.PoisonPill
-
-  def receive = {
-    case InitAnalyzeFile() =>
-      sender ! ResultOfTestBOM(detect(file))
-      self ! PoisonPill
-    case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
-  }
 
   /**
    * Detects the encoding of a file based on its BOM.
    * @param file path to the file.
    * @return the encoding. If no BOM detected, send back ASCII encoding.
    */
-  private def detect(file: String): Option[BOMFileEncoding] = {
+  def detect(file: String): Option[BOMFileEncoding] = {
     val in = new FileInputStream(file)
     val bytesToRead = 1024 // enough to read most XML encoding declarations
 
@@ -115,5 +92,23 @@ class BOMBasedDetectionActor(file: String) extends Actor {
       case UTF8.BOM :+ _ | UTF8.BOM_XML => Some(UTF8)
       case _ => None
     }
+  }
+
+}
+
+/**
+ * This class detects the encoding of a file based on its BOM.
+ */
+class BOMBasedDetectionActor(file: String) extends Actor {
+
+  import BOMEncoding._
+  import TestResult._
+  import akka.actor.PoisonPill
+
+  def receive = {
+    case InitAnalyzeFile() =>
+      sender ! ResultOfTestBOM(detect(file))
+      self ! PoisonPill
+    case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
   }
 }
