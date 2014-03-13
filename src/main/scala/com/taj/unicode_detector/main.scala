@@ -31,6 +31,7 @@ package com.taj.unicode_detector
 
 import java.io.{BufferedWriter, FileWriter, File}
 import org.rogach.scallop._
+import org.slf4j.impl.SimpleLogger
 
 object main extends App {
 
@@ -39,8 +40,7 @@ object main extends App {
 
   val BIG_FILE = encodedFileFolder + "UTF8_without_BOM_big_file.txt"
   val SECOND_FILE = encodedFileFolder + "UTF16_LE.txt"
-  val test = "E:\\TAKEDA\\7857502660FEC20111231.ASC"
-  val arg = Array("--encoding", test)
+  val arg = Array("--encoding", BIG_FILE, "--debug")
   val help = Array("--help")
 
   val opts = new ScallopConf(arg) {
@@ -87,9 +87,9 @@ For usage see below:
     conflicts(encoding, List(merge, help /*, version*/))
   }
 
-  val debug: Boolean = opts.debug.get.getOrElse(false)
+  System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, if (opts.debug.get.getOrElse(false)) "debug" else "info");
 
-  opts.encoding.get.map(_.map(path => (path, Operations.miniDetect(path, debug))).foreach {
+  opts.encoding.get.map(_.map(path => (path, Operations.miniDetect(path))).foreach {
     case (file, encoding) if opts.output.get.isEmpty => println(file + " ; " + encoding.name())
     case (file, encoding) if opts.output.get.isDefined =>
       val w = new BufferedWriter(new FileWriter(opts.output.get.get, true))
@@ -103,7 +103,7 @@ For usage see below:
   convert8859_15 match {
     case Some(list: List[String]) =>
       list.foreach(file => Converter.convert2ISO_8859_15(file,
-        new File(opts.output.get.get, new File(file).getName).getAbsolutePath, debug))
+        new File(opts.output.get.get, new File(file).getName).getAbsolutePath))
     case None =>
   }
 
@@ -111,7 +111,7 @@ For usage see below:
   convertUTF8 match {
     case Some(list: List[String]) =>
       list.foreach(file => Converter.convert2UTF_8(file,
-        new File(opts.output.get.get, new File(file).getName).getAbsolutePath, debug))
+        new File(opts.output.get.get, new File(file).getName).getAbsolutePath))
     case None =>
   }
 
@@ -119,7 +119,7 @@ For usage see below:
   optionMerge match {
     case Some(list) =>
       if (!Operations.isSameEncoding(true, list: _*)) System.exit(1)
-      Operations.mergeFilesWithoutBom(debug, opts.output.get.get, list: _*)
+      Operations.mergeFilesWithoutBom(opts.output.get.get, list: _*)
     case None =>
   }
 }
