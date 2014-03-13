@@ -77,7 +77,7 @@ object BOMEncoding {
 /**
  * This class detects the encoding of a file based on its BOM.
  */
-class BOMBasedDetectionActor(file: String, verbose: Boolean) extends Actor {
+class BOMBasedDetectionActor(file: String) extends Actor {
 
   import BOMEncoding._
   import TestResult._
@@ -85,7 +85,7 @@ class BOMBasedDetectionActor(file: String, verbose: Boolean) extends Actor {
 
   def receive = {
     case InitAnalyzeFile() =>
-      sender ! ResultOfTestBOM(detect(file, verbose))
+      sender ! ResultOfTestBOM(detect(file))
       self ! PoisonPill
     case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
   }
@@ -95,7 +95,7 @@ class BOMBasedDetectionActor(file: String, verbose: Boolean) extends Actor {
    * @param file path to the file.
    * @return the encoding. If no BOM detected, send back ASCII encoding.
    */
-  private def detect(file: String, verbose: Boolean): Option[BOMFileEncoding] = {
+  private def detect(file: String): Option[BOMFileEncoding] = {
     val in = new FileInputStream(file)
     val bytesToRead = 1024 // enough to read most XML encoding declarations
 

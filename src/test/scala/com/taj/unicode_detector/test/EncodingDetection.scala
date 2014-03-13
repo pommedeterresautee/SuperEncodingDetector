@@ -111,7 +111,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on its BOM" in {
-          val detection = Operations.detect(file.getAbsolutePath, verbose = false)
+          val detection = Operations.detect(file.getAbsolutePath)
           detection should equal(fileToTest.encoding)
         }
 
@@ -140,7 +140,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         s"should not be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on its BOM" in {
-          val detection = Operations.detect(file.getAbsolutePath, verbose = false)
+          val detection = Operations.detect(file.getAbsolutePath)
           detection should not equal fileToTest.encoding
         }
 
@@ -170,7 +170,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         s"Merge files ${first.fileName} and ${second.fileName} together" in {
-          Operations.mergeFilesWithoutBom(true, tempPath, firstPath, secondPath)
+          Operations.mergeFilesWithoutBom(tempPath, firstPath, secondPath)
           tempFile should be('exists)
           tempFile.length() should equal(firstFile.length() + secondFile.length() - first.encoding.BOM.size)
         }
@@ -207,7 +207,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         "the file must be detected as ASCII" in {
           Operations.copyWithoutBom(sourcePath, tempFilePath, verbose = true)
           tempFile should be('exists)
-          Operations.detect(tempFile.getAbsolutePath, verbose = false).charsetUsed should be(BOMEncoding.ASCII.charsetUsed)
+          Operations.detect(tempFile.getAbsolutePath).charsetUsed should be(BOMEncoding.ASCII.charsetUsed)
         }
 
         s"the size of ${tempFile.getName} should be equal to the size of ${manuallyCleaned.fileName}" in {
@@ -248,10 +248,10 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
       val fileToConvert = encodedFileFolder + file.fileName
       val convertedFile = tempFilesFolder + "converted_to_ASCII_" + file.fileName
       s"convert the file ${file.fileName} to ASCII" in {
-        Converter.convert2ASCII(fileToConvert, convertedFile, verbose = false)
+        Converter.convert2ASCII(fileToConvert, convertedFile)
         new File(convertedFile) should be('exists)
         convertedFile.length should be > 0
-        val encoding = Operations.detect(convertedFile, verbose = false)
+        val encoding = Operations.detect(convertedFile)
         encoding should equal(BOMEncoding.ASCII)
       }
   }
@@ -263,10 +263,10 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
 
       s"convert the file ${file.getName} to UTF-8" in {
         val fileConverted = new File(tempFilesFolder, "converted_to_UTF-8_" + fileToTest.fileName)
-        Converter.convert2UTF_8(file.getAbsolutePath, fileConverted.getAbsolutePath, verbose = false)
+        Converter.convert2UTF_8(file.getAbsolutePath, fileConverted.getAbsolutePath)
         fileConverted should be('exists)
         fileConverted.length should be > 0l
-        val encoding = Operations.detect(fileConverted.getAbsolutePath, verbose = false)
+        val encoding = Operations.detect(fileConverted.getAbsolutePath)
         encoding should equal(BOMEncoding.UTF8NoBOM)
         val encoding_bis = Converter.detectEncoding(fileConverted.getAbsolutePath)
         encoding_bis should equal(BOMEncoding.UTF8NoBOM.charsetUsed.get)
@@ -274,10 +274,9 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
 
       s"convert the file ${file.getName} to ISO 8859-15" in {
         val fileConverted = new File(tempFilesFolder, "converted_to_ISO_8859-15_" + fileToTest.fileName)
-        Converter.convert2ISO_8859_15(file.getAbsolutePath, fileConverted.getAbsolutePath, verbose = false)
+        Converter.convert2ISO_8859_15(file.getAbsolutePath, fileConverted.getAbsolutePath)
         fileConverted should be('exists)
         fileConverted.length should be > 0l
-        println(Converter.detectEncoding(file.getAbsolutePath))
         val encoding_bis = Converter.detectEncoding(fileConverted.getAbsolutePath)
         encoding_bis should equal(Charset.forName("ISO-8859-1"))
       }

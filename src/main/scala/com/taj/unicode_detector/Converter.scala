@@ -51,30 +51,27 @@ object Converter {
    * Convert a text file to ASCII.
    * @param sourcePath path to the source file.
    * @param destinationPath path to the final file.
-   * @param verbose print more information.
    */
-  def convert2ASCII(sourcePath: String, destinationPath: String, verbose: Boolean) = convertWithTransformation(sourcePath, destinationPath, verbose, StandardCharsets.US_ASCII, convertAnyStringToASCII)
+  def convert2ASCII(sourcePath: String, destinationPath: String) = convertWithTransformation(sourcePath, destinationPath, StandardCharsets.US_ASCII, convertAnyStringToASCII)
 
   /**
    * Convert from a format to UTF-8.
    * @param sourcePath path to the source file.
    * @param destinationPath path to the final file.
-   * @param verbose print more information.
    */
-  def convert2UTF_8(sourcePath: String, destinationPath: String, verbose: Boolean) = convertWithTransformation(sourcePath, destinationPath, verbose, StandardCharsets.UTF_8, noTransformation)
+  def convert2UTF_8(sourcePath: String, destinationPath: String) = convertWithTransformation(sourcePath, destinationPath, StandardCharsets.UTF_8, noTransformation)
 
   /**
    * Convert from a format to ISO-8859-15.
    * @param sourcePath path to the source file.
    * @param destinationPath path to the final file.
-   * @param verbose print more information.
    */
-  def convert2ISO_8859_15(sourcePath: String, destinationPath: String, verbose: Boolean) = convertWithTransformation(sourcePath, destinationPath, verbose, Charset.forName("ISO-8859-15"), noTransformation)
+  def convert2ISO_8859_15(sourcePath: String, destinationPath: String) = convertWithTransformation(sourcePath, destinationPath, Charset.forName("ISO-8859-15"), noTransformation)
 
-  private def convertWithTransformation(sourcePath: String, destinationPath: String, verbose: Boolean, destinationEncoding: Charset, transformation: String => String) {
+  private def convertWithTransformation(sourcePath: String, destinationPath: String, destinationEncoding: Charset, transformation: String => String) {
     val sourceEncoding: Charset = detectEncoding(sourcePath)
     val sourceIS: FileInputStream = BOMEncoding.getBOMfromCharset(sourceEncoding) match {
-      case Some(bom) => Operations.removeBOM(verbose, bom, sourcePath)
+      case Some(bom) => Operations.removeBOM(bom, sourcePath)
       case None => new FileInputStream(sourcePath)
     }
     val content: BufferedSource = Source.fromInputStream(sourceIS, sourceEncoding.name())

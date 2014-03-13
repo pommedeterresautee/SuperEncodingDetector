@@ -42,48 +42,50 @@ import com.taj.unicode_detector.TestResult.FinalResult
 import scala.Some
 import com.taj.unicode_detector.ActorLifeOverview.KillAkka
 import com.taj.unicode_detector.TestResult.InitAnalyzeFile
+import com.typesafe.scalalogging.slf4j.Logging
 
 
-object TestResult{
+object TestResult {
 
   case class InitAnalyzeFile()
 
-  case class ResultOfTestBOM(result:Option[BOMFileEncoding])
-  case class ResultOfTestFullFileAnalyze(category:BOMFileEncoding, nonMatchingBytePositionInFile: Option[Long], timeElapsed: Long, reaper:ActorRef)
-  case class FinalResult(result:BOMFileEncoding)
+  case class ResultOfTestBOM(result: Option[BOMFileEncoding])
+
+  case class ResultOfTestFullFileAnalyze(category: BOMFileEncoding, nonMatchingBytePositionInFile: Option[Long], timeElapsed: Long, reaper: ActorRef)
+
+  case class FinalResult(result: BOMFileEncoding)
+
 }
 
-class Detection(file: String, verbose: Boolean) extends Actor {
+class Detection(file: String) extends Actor {
 
   import BOMEncoding._
   import TestResult._
 
   var mActorUTF8: Option[ActorRef] = None
-  var mVerbose:Option[Boolean] = None
-  var mFile:Option[String] = None
+  var mFile: Option[String] = None
 
   var mOriginalSender: Option[ActorRef] = None
-  
+
   def receive = {
     case InitAnalyzeFile() =>
       mFile = Some(file)
-      mVerbose = Some(verbose)
       mOriginalSender = Some(sender)
-      val BOMActor = context.system.actorOf(Props(new BOMBasedDetectionActor(file, verbose)), name = "BOMActor")
+      val BOMActor = context.system.actorOf(Props(new BOMBasedDetectionActor(file)), name = "BOMActor")
       BOMActor ! InitAnalyzeFile()
     case ResultOfTestBOM(Some(detectedEncoding)) =>
       mOriginalSender.get ! FinalResult(detectedEncoding)
     case ResultOfTestBOM(None) =>
-      val asciiReaper = context.system.actorOf(Props(new Reaper(mVerbose.get)), "ASCIIReaper")
-      val mActorASCIIActorRef = context.system.actorOf(Props(new FileAnalyzer(ASCII, mVerbose.get, mFile.get, ParamAkka.checkASCII)), name = "ASCIIFileAnalyzer")
+      val asciiReaper = context.system.actorOf(Props(new Reaper()), "ASCIIReaper")
+      val mActorASCIIActorRef = context.system.actorOf(Props(new FileAnalyzer(ASCII, mFile.get, ParamAkka.checkASCII)), name = "ASCIIFileAnalyzer")
       mActorASCIIActorRef ! StartRegistration(asciiReaper)
       mActorASCIIActorRef ! InitAnalyzeFile()
     case ResultOfTestFullFileAnalyze(ASCII, None, _, reaper) =>
       mOriginalSender.get ! FinalResult(ASCII)
       reaper ! KillAkka()
     case ResultOfTestFullFileAnalyze(ASCII, Some(position), time, _) =>
-      val UTF8Reaper = context.system.actorOf(Props(new Reaper(mVerbose.get)), "UTF8Reaper")
-      val mActorUTF8ActorRef = context.system.actorOf(Props(new FileAnalyzer(UTF8NoBOM, mVerbose.get, mFile.get, ParamAkka.checkUTF8)), name = "UTF8FileAnalyzer")
+      val UTF8Reaper = context.system.actorOf(Props(new Reaper()), "UTF8Reaper")
+      val mActorUTF8ActorRef = context.system.actorOf(Props(new FileAnalyzer(UTF8NoBOM, mFile.get, ParamAkka.checkUTF8)), name = "UTF8FileAnalyzer")
       mActorUTF8ActorRef ! StartRegistration(UTF8Reaper)
       mActorUTF8ActorRef ! InitAnalyzeFile()
     case ResultOfTestFullFileAnalyze(UTF8NoBOM, None, time, reaper) =>
@@ -98,14 +100,12 @@ class Detection(file: String, verbose: Boolean) extends Actor {
 /**
  * First try to detect on the BOM then on the content.
  * @param file path to the file to test.
- * @param verbose true to display more information.
  */
-class MiniDetection(file: String, verbose: Boolean) extends Actor {
+class MiniDetection(file: String) extends Actor {
 
   import TestResult._
 
   var mActorUTF8: Option[ActorRef] = None
-  var mVerbose: Option[Boolean] = None
   var mFile: Option[String] = None
 
   var mOriginalSender: Option[ActorRef] = None
@@ -113,9 +113,8 @@ class MiniDetection(file: String, verbose: Boolean) extends Actor {
   def receive = {
     case InitAnalyzeFile() =>
       mFile = Some(file)
-      mVerbose = Some(verbose)
       mOriginalSender = Some(sender)
-      val BOMActor = context.system.actorOf(Props(new BOMBasedDetectionActor(file, verbose)), name = "BOMActor")
+      val BOMActor = context.system.actorOf(Props(new BOMBasedDetectionActor(file)), name = "BOMActor")
       BOMActor ! InitAnalyzeFile()
     case ResultOfTestBOM(Some(detectedEncoding)) =>
       mOriginalSender.get ! detectedEncoding.charsetUsed
@@ -129,13 +128,13 @@ class MiniDetection(file: String, verbose: Boolean) extends Actor {
 /**
  * Main class to detect a file encoding based on its BOM.
  */
-object Operations {
+object Operations extends Logging {
 
-  def detect(file: String, verbose: Boolean): BOMFileEncoding = {
+  def detect(file: String): BOMFileEncoding = {
     implicit val timeout = Timeout(2, TimeUnit.MINUTES)
 
     val system: ActorSystem = ActorSystem("ActorSystemFileIdentification")
-    val detector = system.actorOf(Props(new Detection(file, verbose)), name = "Detector")
+    val detector = system.actorOf(Props(new Detection(file)), name = "Detector")
     Await.result(detector ? InitAnalyzeFile(), timeout.duration) match {
       case FinalResult(detectedEncoding) => detectedEncoding
       case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during the check")
@@ -145,13 +144,12 @@ object Operations {
   /**
    * Detects the encoding of a file based on their BOM or their content.
    * @param file path to the file to analyze.
-   * @param verbose true if needs to display more information.
    * @return the charset detected.
    */
-  def miniDetect(file: String, verbose: Boolean): Charset = {
+  def miniDetect(file: String): Charset = {
     implicit val timeout = Timeout(2, TimeUnit.MINUTES)
     val system: ActorSystem = ActorSystem("SystemEncodingFileIdentification")
-    val detector = system.actorOf(Props(new MiniDetection(file, verbose)), name = "MiniDetector")
+    val detector = system.actorOf(Props(new MiniDetection(file)), name = "MiniDetector")
     val result = Await.result(detector ? InitAnalyzeFile(), timeout.duration) match {
       case charset: Charset => charset
       case Some(charset: Charset) => charset
@@ -169,24 +167,23 @@ object Operations {
    */
   def isSameEncoding(verbose: Boolean, paths: String*): Boolean = {
     if (paths.size < 2) throw new IllegalArgumentException(s"Not enough files to compare (${paths.size})")
-    val charset: Charset = miniDetect(paths.head, verbose)
+    val charset: Charset = miniDetect(paths.head)
     paths.tail.forall {
       path: String =>
-        val detectedEncoding: Charset = miniDetect(path, verbose)
+        val detectedEncoding: Charset = miniDetect(path)
         val same = charset.equals(detectedEncoding)
-        if (!same && verbose) println(s"The first file [${paths.head}] is encoded as ${charset.name()} but the file [$path] is encoded as ${detectedEncoding.name}.")
+        if (!same) logger.debug(s"The first file [${paths.head}] is encoded as ${charset.name()} but the file [$path] is encoded as ${detectedEncoding.name}.")
         same
     }
   }
 
   /**
    * Remove the bytes relative to the detected BOM of an existing text file.
-   * @param verbose true if want to see the progress of the process.
    * @param bom the BOM to remove to the file.
    * @param path the path to the file to the file.
    * @return
    */
-  def removeBOM(verbose: Boolean, bom: BOMFileEncoding, path: String): FileInputStream = {
+  def removeBOM(bom: BOMFileEncoding, path: String): FileInputStream = {
     val toDrop = bom.BOM.size
     val f = new FileInputStream(path)
     val realSkipped = f.skip(toDrop)
@@ -201,13 +198,13 @@ object Operations {
    * @param verbose true to see more information about the process ongoing.
    */
   def copyWithoutBom(from: String, to: String, verbose: Boolean) {
-    val bomFrom = detect(from, verbose)
+    val bomFrom = detect(from)
     val fileTo = new File(to)
     if (fileTo.exists()) fileTo.delete()
     if (fileTo.exists()) throw new IllegalStateException(s"File $to can't be deleted.")
     val output = new FileOutputStream(fileTo)
 
-    val input = removeBOM(verbose, bomFrom, from)
+    val input = removeBOM(bomFrom, from)
     val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
     try {
       Iterator
@@ -222,17 +219,16 @@ object Operations {
 
   /**
    * Merge several text files together even if they have a BOM.
-   * @param verbose true to display the process ongoing.
    * @param destination path where to save the merged file.
    * @param paths paths to the files to merge together.
    */
-  def mergeFilesWithoutBom(verbose: Boolean, destination: String, paths: String*) {
+  def mergeFilesWithoutBom(destination: String, paths: String*) {
     Files.copy(Paths.get(paths(0)), Paths.get(destination))
     val bytes = new Array[Byte](1024)
     val output = new FileOutputStream(destination, true)
     try paths.drop(1).foreach {
       path =>
-        val input = removeBOM(verbose, detect(path, verbose), path)
+        val input = removeBOM(detect(path), path)
         try Iterator
           .continually(input.read(bytes))
           .takeWhile(-1 !=)

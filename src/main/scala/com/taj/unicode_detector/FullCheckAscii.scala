@@ -39,13 +39,17 @@ import java.util.concurrent.TimeUnit
 import com.taj.unicode_detector.ActorLifeOverview._
 import com.taj.unicode_detector.FileFullAnalyzeStateMessages._
 import com.taj.unicode_detector.TestResult.{ResultOfTestFullFileAnalyze, InitAnalyzeFile}
+import com.typesafe.scalalogging.slf4j.Logging
 
 private object FileFullAnalyzeStateMessages {
+
   case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Int)
-  case class Result(actor: ActorRef, pathOfTheFileAnalyzed: String, nonMatchingCharPositionInFile: Option[Long], verbose: Boolean)
+
+  case class Result(actor: ActorRef, pathOfTheFileAnalyzed: String, nonMatchingCharPositionInFile: Option[Long])
+
 }
 
-class FileAnalyzer(encodingTested:BOMFileEncoding , verbose: Boolean, path: String, testToOperate: Array[Byte] => Int) extends Actor {
+class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate: Array[Byte] => Int) extends Actor with Logging {
   val totalLengthToAnalyze = new File(path).length()
   val numberOfPartToAnalyze = (totalLengthToAnalyze / ParamAkka.sizeOfaPartToAnalyze).toInt match {
     case 0 => 1
@@ -53,10 +57,10 @@ class FileAnalyzer(encodingTested:BOMFileEncoding , verbose: Boolean, path: Stri
   }
 
   val nbrOfWorkers = ParamAkka.numberOfWorkerRequired(totalLengthToAnalyze)
-  val routerBlockAnalyzer: ActorRef = context.actorOf(Props(new BlockAnalyzer(verbose)).withRouter(RoundRobinRouter(nbrOfWorkers)), name = s"Router_${encodingTested.charsetName}")
-  
+  val routerBlockAnalyzer: ActorRef = context.actorOf(Props(new BlockAnalyzer()).withRouter(RoundRobinRouter(nbrOfWorkers)), name = s"Router_${encodingTested.charsetName}")
+
   var masterSender: Option[ActorRef] = None
-  var mReaper:Option[ActorRef] = None
+  var mReaper: Option[ActorRef] = None
   var startAnalyzeTime = 0l
   var resultReceived = 0
 
@@ -67,10 +71,10 @@ class FileAnalyzer(encodingTested:BOMFileEncoding , verbose: Boolean, path: Stri
       routerBlockAnalyzer ! Broadcast(RegisterMe(mReaper.get))
 
     case InitAnalyzeFile() =>
-    startAnalyzeTime = System.currentTimeMillis
+      startAnalyzeTime = System.currentTimeMillis
       masterSender = Some(sender)
 
-      if (verbose) println (
+      logger.debug(
         s"""Start processing @$startAnalyzeTime
         Current actor [${self.path}]
         Received a message from ${sender.path}.
@@ -82,9 +86,9 @@ class FileAnalyzer(encodingTested:BOMFileEncoding , verbose: Boolean, path: Stri
         .foreach(partNumber =>
         routerBlockAnalyzer ! AnalyzeBlock(path, partNumber * ParamAkka.sizeOfaPartToAnalyze, ParamAkka.sizeOfaPartToAnalyze, ParamAkka.bufferSize, testToOperate))
 
-      if (verbose) println(s"The sender is ${sender.path} but the parent is ${context.parent.path}")
+      logger.debug(s"The sender is ${sender.path} but the parent is ${context.parent.path}")
 
-    case Result(actor, filePath, nonMatchingCharPositionInFile, verboseActivated) =>
+    case Result(actor, filePath, nonMatchingCharPositionInFile) =>
       resultReceived += 1
 
       masterSender match {
@@ -96,7 +100,7 @@ class FileAnalyzer(encodingTested:BOMFileEncoding , verbose: Boolean, path: Stri
 
           routerBlockAnalyzer ! Broadcast(PoisonPill)
 
-          if (verboseActivated) println(s"*** Finished Actor ${self.path} process in ${System.currentTimeMillis() - startAnalyzeTime} ***")
+          logger.debug(s"*** Finished Actor ${self.path} process in ${System.currentTimeMillis() - startAnalyzeTime} ***")
         case Some(masterActor) =>
           actor ! AnalyzeBlock(filePath, resultReceived * ParamAkka.sizeOfaPartToAnalyze, ParamAkka.sizeOfaPartToAnalyze, ParamAkka.bufferSize, testToOperate)
       }
@@ -104,22 +108,22 @@ class FileAnalyzer(encodingTested:BOMFileEncoding , verbose: Boolean, path: Stri
   }
 }
 
-private class BlockAnalyzer(verbose:Boolean) extends Actor {
+private class BlockAnalyzer() extends Actor with Logging {
 
   def receive = {
     case AnalyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate) =>
 
       val ID = startRead / length
-      if (verbose) println(s"Start analyze of block $ID [$startRead - ${startRead + length}[ - Ref [${self.path}]")
+      logger.debug(s"Start analyze of block $ID [$startRead - ${startRead + length}[ - Ref [${self.path}]")
 
-      sender ! analyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate, verbose)
+      sender ! analyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate)
 
-      if (verbose) println(s"Finished analyze of block $ID - Ref [${self.path}]")
-    case RegisterMe(reg:ActorRef) => reg ! RegisterRootee(self)
+      logger.debug(s"Finished analyze of block $ID - Ref [${self.path}]")
+    case RegisterMe(reg: ActorRef) => reg ! RegisterRootee(self)
     case badMessage => throw new IllegalArgumentException(s"Sent bad parameters (${badMessage.toString}) to Actor ${self.path}")
   }
 
-  private def analyzeBlock(path: String, filePositionStartAnalyze: Long, lengthOfBlockToAnalyze: Long, bufferSize: Integer, testToOperate: Array[Byte] => Int, verbose: Boolean): Result = {
+  private def analyzeBlock(path: String, filePositionStartAnalyze: Long, lengthOfBlockToAnalyze: Long, bufferSize: Integer, testToOperate: Array[Byte] => Int): Result = {
     val limitToAnalyze = filePositionStartAnalyze + lengthOfBlockToAnalyze
     val randomAccessFile = new RandomAccessFile(path, "r")
     val buffer = new Array[Byte](bufferSize)
@@ -141,9 +145,9 @@ private class BlockAnalyzer(verbose:Boolean) extends Actor {
     }
 
     searchResult match {
-      case None => Result(self, path, None, verbose)
+      case None => Result(self, path, None)
       case Some((positionInArray: Int, arrayIndex: Int)) =>
-        Result(self, path, Some(filePositionStartAnalyze + arrayIndex * ParamAkka.bufferSize + positionInArray - 1), verbose) // remove 1 because first position in a file is zero.
+        Result(self, path, Some(filePositionStartAnalyze + arrayIndex * ParamAkka.bufferSize + positionInArray - 1)) // remove 1 because first position in a file is zero.
       case _ => throw new IllegalStateException("Search result should be a Tuple of two Integers.")
     }
   }
