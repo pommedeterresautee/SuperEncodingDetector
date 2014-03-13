@@ -38,10 +38,9 @@ import scala.concurrent.Await
 import akka.pattern.ask
 import java.util.concurrent.TimeUnit
 import com.taj.unicode_detector.ActorLifeOverview.StartRegistration
-import com.taj.unicode_detector.TestResult.FinalResult
 import scala.Some
 import com.taj.unicode_detector.ActorLifeOverview.KillAkka
-import com.taj.unicode_detector.TestResult.InitAnalyzeFile
+import com.taj.unicode_detector.TestResult.{ResultOfTestBOM, InitAnalyzeFile}
 import com.typesafe.scalalogging.slf4j.Logging
 
 
@@ -52,8 +51,6 @@ object TestResult {
   case class ResultOfTestBOM(result: Option[BOMFileEncoding])
 
   case class ResultOfTestFullFileAnalyze(category: BOMFileEncoding, nonMatchingBytePositionInFile: Option[Long], timeElapsed: Long, reaper: ActorRef)
-
-  case class FinalResult(result: BOMFileEncoding)
 
 }
 
@@ -74,14 +71,14 @@ class Detection(file: String) extends Actor {
       val BOMActor = context.system.actorOf(Props(new BOMBasedDetectionActor(file)), name = "BOMActor")
       BOMActor ! InitAnalyzeFile()
     case ResultOfTestBOM(Some(detectedEncoding)) =>
-      mOriginalSender.get ! FinalResult(detectedEncoding)
+      mOriginalSender.get ! ResultOfTestBOM(Some(detectedEncoding))
     case ResultOfTestBOM(None) =>
       val asciiReaper = context.system.actorOf(Props(new Reaper()), "ASCIIReaper")
       val mActorASCIIActorRef = context.system.actorOf(Props(new FileAnalyzer(ASCII, mFile.get, ParamAkka.checkASCII)), name = "ASCIIFileAnalyzer")
       mActorASCIIActorRef ! StartRegistration(asciiReaper)
       mActorASCIIActorRef ! InitAnalyzeFile()
     case ResultOfTestFullFileAnalyze(ASCII, None, _, reaper) =>
-      mOriginalSender.get ! FinalResult(ASCII)
+      mOriginalSender.get ! ResultOfTestBOM(Some(ASCII))
       reaper ! KillAkka()
     case ResultOfTestFullFileAnalyze(ASCII, Some(position), time, _) =>
       val UTF8Reaper = context.system.actorOf(Props(new Reaper()), "UTF8Reaper")
@@ -89,10 +86,10 @@ class Detection(file: String) extends Actor {
       mActorUTF8ActorRef ! StartRegistration(UTF8Reaper)
       mActorUTF8ActorRef ! InitAnalyzeFile()
     case ResultOfTestFullFileAnalyze(UTF8NoBOM, None, time, reaper) =>
-      mOriginalSender.get ! FinalResult(UTF8NoBOM)
+      mOriginalSender.get ! ResultOfTestBOM(Some(UTF8NoBOM))
       reaper ! KillAkka()
     case ResultOfTestFullFileAnalyze(UTF8NoBOM, Some(position), time, reaper) =>
-      mOriginalSender.get ! FinalResult(UnknownEncoding)
+      mOriginalSender.get ! ResultOfTestBOM(Some(UnknownEncoding))
       reaper ! KillAkka()
   }
 }
@@ -125,18 +122,25 @@ class MiniDetection(file: String) extends Actor {
   }
 }
 
+//class DetectionResult() extends Actor {
+//  override def receive: Actor.Receive = {
+//    case ResultOfTestBOM(Some(detectedEncoding)) => detectedEncoding
+//    case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during the check")
+//  }
+//}
+
 /**
  * Main class to detect a file encoding based on its BOM.
  */
 object Operations extends Logging {
 
-  def detect(file: String): BOMFileEncoding = {
+  def detect(file: String): Charset = {
     implicit val timeout = Timeout(2, TimeUnit.MINUTES)
 
     val system: ActorSystem = ActorSystem("ActorSystemFileIdentification")
     val detector = system.actorOf(Props(new Detection(file)), name = "Detector")
     Await.result(detector ? InitAnalyzeFile(), timeout.duration) match {
-      case FinalResult(detectedEncoding) => detectedEncoding
+      case ResultOfTestBOM(Some(detectedEncoding)) => detectedEncoding.charsetUsed.get
       case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during the check")
     }
   }
@@ -179,16 +183,20 @@ object Operations extends Logging {
 
   /**
    * Remove the bytes relative to the detected BOM of an existing text file.
-   * @param bom the BOM to remove to the file.
+   * @param charset the encoding of the file.
    * @param path the path to the file to the file.
    * @return
    */
-  def removeBOM(bom: BOMFileEncoding, path: String): FileInputStream = {
-    val toDrop = bom.BOM.size
-    val f = new FileInputStream(path)
-    val realSkipped = f.skip(toDrop)
-    if (toDrop != realSkipped) throw new IllegalStateException(s"Failed to skip the correct number of bytes for the file $path ($realSkipped instead of $toDrop)")
-    f
+  def removeBOM(charset: Charset, path: String): FileInputStream = {
+    BOMEncoding.getBOMfromCharset(charset) match {
+      case None => new FileInputStream(path)
+      case Some(bom) =>
+        val toDrop = bom.BOM.size
+        val f = new FileInputStream(path)
+        val realSkipped = f.skip(toDrop)
+        if (toDrop != realSkipped) throw new IllegalStateException(s"Failed to skip the correct number of bytes for the file $path ($realSkipped instead of $toDrop)")
+        f
+    }
   }
 
   /**

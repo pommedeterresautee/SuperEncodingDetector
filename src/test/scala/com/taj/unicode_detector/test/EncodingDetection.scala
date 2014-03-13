@@ -111,8 +111,8 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         }
 
         s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on its BOM" in {
-          val detection = Operations.detect(file.getAbsolutePath)
-          detection should equal(fileToTest.encoding)
+          val detection:Charset = Operations.detect(file.getAbsolutePath)
+          detection should equal(fileToTest.encoding.charsetUsed.get)
         }
 
         s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on its content" in {
@@ -207,7 +207,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         "the file must be detected as ASCII" in {
           Operations.copyWithoutBom(sourcePath, tempFilePath, verbose = true)
           tempFile should be('exists)
-          Operations.detect(tempFile.getAbsolutePath).charsetUsed should be(BOMEncoding.ASCII.charsetUsed)
+          Operations.detect(tempFile.getAbsolutePath) should be(BOMEncoding.ASCII.charsetUsed.get)
         }
 
         s"the size of ${tempFile.getName} should be equal to the size of ${manuallyCleaned.fileName}" in {
@@ -252,7 +252,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         new File(convertedFile) should be('exists)
         convertedFile.length should be > 0
         val encoding = Operations.detect(convertedFile)
-        encoding should equal(BOMEncoding.ASCII)
+        encoding should equal(BOMEncoding.ASCII.charsetUsed.get)
       }
   }
 
@@ -267,7 +267,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
         fileConverted should be('exists)
         fileConverted.length should be > 0l
         val encoding = Operations.detect(fileConverted.getAbsolutePath)
-        encoding should equal(BOMEncoding.UTF8NoBOM)
+        encoding should equal(BOMEncoding.UTF8NoBOM.charsetUsed.get)
         val encoding_bis = Converter.detectEncoding(fileConverted.getAbsolutePath)
         encoding_bis should equal(BOMEncoding.UTF8NoBOM.charsetUsed.get)
       }
