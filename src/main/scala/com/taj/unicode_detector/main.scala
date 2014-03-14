@@ -87,7 +87,7 @@ For usage see below:
     conflicts(encoding, List(merge, help /*, version*/))
   }
 
-  System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, if (opts.debug.get.getOrElse(false)) "debug" else "info");
+  System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, if (opts.debug.get.getOrElse(false)) "debug" else "info")
 
   opts.encoding.get.map(_.map(path => (path, Operations.miniDetect(path))).foreach {
     case (file, encoding) if opts.output.get.isEmpty => println(file + " ; " + encoding.name())

@@ -37,6 +37,8 @@ import akka.testkit.{ImplicitSender, TestKit}
 
 import org.apache.commons.codec.digest.DigestUtils
 import java.nio.charset.{StandardCharsets, Charset}
+import com.typesafe.scalalogging.slf4j.{Logger, Logging}
+import org.slf4j.LoggerFactory
 
 /**
  * A case class to contain the parameters of a test file.
@@ -48,7 +50,7 @@ case class testFileProperties(fileName: String, encoding: BOMFileEncoding, worki
 /**
  * Test the detection algorithm with each kind of file.
  */
-class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll {
+class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll with Logging {
   val testResourcesFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}"
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
   val tempFilesFolder = testResourcesFolder + s"temp${File.separator}"
@@ -83,6 +85,7 @@ class Tester extends TestKit(ActorSystem("testSystem")) with ImplicitSender with
    * Clean all temp files before starting
    */
   override def beforeAll() {
+    val logger = Logger(LoggerFactory getLogger "Test logger")
     val tmpFolder = new File(tempFilesFolder)
     tmpFolder.listFiles().filter(!_.getName.contentEquals(".gitignore")).foreach(_.delete())
     tmpFolder.listFiles().length should be > 0
