@@ -95,11 +95,8 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
         case None =>
         case Some(masterActor) if resultReceived == numberOfPartToAnalyze || !nonMatchingCharPositionInFile.isEmpty =>
           masterActor ! ResultOfTestFullFileAnalyze(encodingTested, nonMatchingCharPositionInFile, System.currentTimeMillis() - startAnalyzeTime, mReaper.get)
-          implicit val timeout = Timeout(2, TimeUnit.MINUTES)
           masterSender = None
-
           routerBlockAnalyzer ! Broadcast(PoisonPill)
-
           logger.debug(s"*** Finished Actor ${self.path} process in ${System.currentTimeMillis() - startAnalyzeTime} ***")
         case Some(masterActor) =>
           actor ! AnalyzeBlock(filePath, resultReceived * ParamAkka.sizeOfaPartToAnalyze, ParamAkka.sizeOfaPartToAnalyze, ParamAkka.bufferSize, testToOperate)
