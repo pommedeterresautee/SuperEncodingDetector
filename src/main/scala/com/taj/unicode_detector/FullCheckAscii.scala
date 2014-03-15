@@ -94,10 +94,12 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
       masterSender match {
         case None =>
         case Some(masterActor) if resultReceived == numberOfPartToAnalyze || !nonMatchingCharPositionInFile.isEmpty =>
-          masterActor ! ResultOfTestFullFileAnalyze(encodingTested, nonMatchingCharPositionInFile, mReaper.get)
+          val encodingResult = if(nonMatchingCharPositionInFile.isEmpty) Some(encodingTested) else None
+          masterActor ! ResultOfTestFullFileAnalyze(encodingResult, mReaper.get)
           masterSender = None
           routerBlockAnalyzer ! Broadcast(PoisonPill)
           logger.debug(s"*** Processed Actor ${self.path} in ${System.currentTimeMillis() - startAnalyzeTime}ms ***")
+          if(nonMatchingCharPositionInFile.isDefined) logger.debug(s"First char non matching with the encoding ${encodingTested.charsetUsed.name()} is at position ${nonMatchingCharPositionInFile.get}.")
         case Some(masterActor) =>
           actor ! AnalyzeBlock(filePath, resultReceived * ParamAkka.sizeOfaPartToAnalyze, ParamAkka.sizeOfaPartToAnalyze, ParamAkka.bufferSize, testToOperate)
       }

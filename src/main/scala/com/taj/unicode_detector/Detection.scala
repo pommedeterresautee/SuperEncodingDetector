@@ -50,7 +50,7 @@ object TestResult {
 
   case class ResultOfTestBOM(result: Option[BOMFileEncoding])
 
-  case class ResultOfTestFullFileAnalyze(category: BOMFileEncoding, nonMatchingBytePositionInFile: Option[Long], reaper: ActorRef)
+  case class ResultOfTestFullFileAnalyze(category: Option[BOMFileEncoding], reaper: ActorRef)
 
 }
 
@@ -76,10 +76,10 @@ class Detection(file: String) extends Actor {
   }
 
   def ASCIIResultReceive:Receive = {
-    case ResultOfTestFullFileAnalyze(ASCII, None, reaper) =>
+    case ResultOfTestFullFileAnalyze(Some(ASCII), reaper) =>
       mOriginalSender.get ! ResultOfTestBOM(Some(ASCII))
       reaper ! KillAkka()
-    case ResultOfTestFullFileAnalyze(ASCII, Some(position), _) =>
+    case ResultOfTestFullFileAnalyze(None, _) =>
       context.become(UTF8ResultReceive)
       val UTF8Reaper = context.system.actorOf(Props(new Reaper()), "UTF8Reaper")
       val mActorUTF8ActorRef = context.system.actorOf(Props(new FileAnalyzer(UTF8NoBOM, mFile.get, ParamAkka.checkUTF8)), name = "UTF8FileAnalyzer")
@@ -88,10 +88,10 @@ class Detection(file: String) extends Actor {
   }
 
   def UTF8ResultReceive:Receive = {
-    case ResultOfTestFullFileAnalyze(UTF8NoBOM, None, reaper) =>
+    case ResultOfTestFullFileAnalyze(Some(UTF8NoBOM), reaper) =>
       mOriginalSender.get ! ResultOfTestBOM(Some(UTF8NoBOM))
       reaper ! KillAkka()
-    case ResultOfTestFullFileAnalyze(UTF8NoBOM, Some(position), reaper) =>
+    case ResultOfTestFullFileAnalyze(None, reaper) =>
       mOriginalSender.get ! ResultOfTestBOM(Some(BOMFileEncoding(Converter.detectEncoding(file), List(), List())))
       reaper ! KillAkka()
   }
