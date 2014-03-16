@@ -31,8 +31,7 @@ package com.taj.unicode_detector.test
 
 import org.scalatest._
 import java.io.File
-import akka.actor.ActorSystem
-import akka.testkit.{ImplicitSender, TestKit}
+import akka.testkit.ImplicitSender
 
 import com.typesafe.scalalogging.slf4j.{Logger, Logging}
 import org.slf4j.LoggerFactory
@@ -41,11 +40,12 @@ import SecondListFilesToTest._
 import ThirdListFilesToTestWrongParameters._
 import com.taj.unicode_detector.test.tests._
 
+//trait AkkaTrait extends TestKit(ActorSystem("testSystem")) with ImplicitSender
 
 /**
  * Test the detection algorithm with each kind of file.
  */
-class Main extends TestKit(ActorSystem("testSystem")) with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll with Logging {
+class MainTest extends Suites(BOMTests, Conversion, DifferentBOM, EncodingTest, TestEncodingWithWrongParameter) with WordSpecLike with Matchers with BeforeAndAfterAll with Logging {
 
 
   /**
@@ -63,23 +63,23 @@ class Main extends TestKit(ActorSystem("testSystem")) with ImplicitSender with W
    * Delete all temp files.
    */
   override def afterAll(): Unit = {
-    system.shutdown()
+    //    system.shutdown()
   }
 
   Seq(UTF8_with_BOM, UTF8_without_BOM, UTF16_BE, UTF16_LE, ASCII, Windows_1252, UTF8_with_BOM_bis, UTF8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis, UTF8_with_BOM_manually_cleaned, UTF16_BE_manually_cleaned, UTF16_LE_manually_cleaned)
     .foreach(EncodingTest.test)
 
-  Seq(UTF8_with_BOM_error, UTF8_without_BOM_error, UTF16_BE_error, UTF16_LE_error, ASCII_error, Windows_1252_error)
+  List(UTF8_with_BOM_error, UTF8_without_BOM_error, UTF16_BE_error, UTF16_LE_error, ASCII_error, Windows_1252_error)
     .foreach(TestEncodingWithWrongParameter.test)
 
-  Seq((UTF8_with_BOM, UTF8_with_BOM_bis), (UTF8_without_BOM, UTF8_without_BOM_bis), (UTF16_BE, UTF16_BE_bis), (UTF16_LE, UTF16_LE_bis)).foreach(BOMTests.test)
+  List((UTF8_with_BOM, UTF8_with_BOM_bis), (UTF8_without_BOM, UTF8_without_BOM_bis), (UTF16_BE, UTF16_BE_bis), (UTF16_LE, UTF16_LE_bis)).foreach(BOMTests.test)
 
-  Seq((Windows_1252, ASCII), (UTF16_BE, UTF8_with_BOM), (UTF8_with_BOM, UTF16_LE), (UTF16_BE, UTF16_LE)).foreach(DifferentBOM.test)
+  List((Windows_1252, ASCII), (UTF16_BE, UTF8_with_BOM), (UTF8_with_BOM, UTF16_LE), (UTF16_BE, UTF16_LE)).foreach(DifferentBOM.test)
 
-  Seq((UTF8_with_BOM, UTF8_with_BOM_manually_cleaned), (UTF16_BE, UTF16_BE_manually_cleaned), (UTF16_LE, UTF16_LE_manually_cleaned), (ASCII, ASCII)).foreach(BOMTests.test2)
+  List((UTF8_with_BOM, UTF8_with_BOM_manually_cleaned), (UTF16_BE, UTF16_BE_manually_cleaned), (UTF16_LE, UTF16_LE_manually_cleaned), (ASCII, ASCII)).foreach(BOMTests.test2)
 
-  Seq(ASCII, UTF8_with_BOM, UTF16_BE, UTF16_LE, UTF8_with_BOM_bis, UTF8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis).foreach(Conversion.test)
+  List(ASCII, UTF8_with_BOM, UTF16_BE, UTF16_LE, UTF8_with_BOM_bis, UTF8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis).foreach(Conversion.test)
 
-  Seq(UTF16_BE_bis, UTF16_LE_bis)
+  List(UTF16_BE_bis, UTF16_LE_bis)
     .foreach(Conversion.test2)
 }
