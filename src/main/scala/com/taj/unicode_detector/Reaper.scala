@@ -32,19 +32,23 @@ package com.taj.unicode_detector
 import akka.actor._
 import scala.collection.mutable.ArrayBuffer
 import com.typesafe.scalalogging.slf4j.Logging
-import com.taj.unicode_detector.ActorLifeOverview.RegisterRootee
-import com.taj.unicode_detector.ActorLifeOverview.RegisterRooter
-import akka.actor.Terminated
-import scala.Some
-import com.taj.unicode_detector.ActorLifeOverview.KillAkka
+import com.taj.unicode_detector.ActorLife.RegisterRootee
 
-object ActorLifeOverview {
+import akka.actor.Terminated
+import com.taj.unicode_detector.ActorLife.KillAkka
+import scala.util.{Failure, Success}
+import akka.util.Timeout
+import scala.concurrent.duration.FiniteDuration
+import java.util.concurrent.TimeUnit
+import scala.concurrent.ExecutionContext
+
+object ActorLife {
 
   case class StartRegistration(registrer: ActorRef)
 
   case class RegisterRootee(ref: ActorRef)
 
-  case class RegisterRooter(ref: ActorRef)
+  //  case class RegisterRooter(ref: ActorRef)
 
   case class RegisterMe(ref: ActorRef)
 
@@ -66,35 +70,51 @@ object Reaper {
  */
 class Reaper() extends Actor with Logging {
 
-  val watchedRootee = ArrayBuffer.empty[ActorRef]
-  var rooter: Option[ActorRef] = None
+  val watchedRoutee = ArrayBuffer.empty[ActorRef]
+  //  var router: Option[ActorRef] = None
   var orderToKillAkka = false
 
-  def stopAkka() {
-    if (rooter.isEmpty) {
-      logger.debug("*** EVERY BODY IS GONE ***")
-      context.system.shutdown()
-    }
-  }
+  //  def stopAkka() {
+  //    if (router.isEmpty) {
+  //      logger.debug("*** Every body is gone ***")
+  //      context.system.shutdown()
+  //    }
+  //  }
 
-  final def receive = {
-    case RegisterRootee(refRootee) =>
-      logger.debug(s"*** register rootee ${refRootee.path} ***")
-      context.watch(refRootee)
-      watchedRootee += refRootee
-    case RegisterRooter(refRooter) =>
-      logger.debug(s"*** register rooter ${refRooter.path} ***")
-      context.watch(refRooter)
-      rooter = Some(refRooter)
+  def receive = {
+    case RegisterRootee(refRoutee) =>
+      logger.debug(s"*** Register rootee ${refRoutee.path} ***")
+      context.watch(refRoutee)
+      watchedRoutee += refRoutee
+    //    case RegisterRooter(refRooter) =>
+    //      logger.debug(s"*** Regiser rooter ${refRooter.path} ***")
+    //      context.watch(refRooter)
+    //      router = Some(refRooter)
     case Terminated(ref) =>
-      logger.debug(s"*** has been removed ${ref.path} ***")
-      if (watchedRootee.contains(ref)) watchedRootee -= ref
-      if (rooter.isDefined && rooter.get.equals(ref)) {
-        rooter = None
+      logger.debug(s"*** Has been removed ${ref.path} ***")
+      import ExecutionContext.Implicits.global
+      implicit val timeout = Timeout(FiniteDuration(1, TimeUnit.MINUTES))
+
+      if (watchedRoutee.size == 1) context.actorSelection(ref.path.parent).resolveOne().onComplete {
+        case Success(parent) => {
+          logger.debug(s"Get the parent actor reference ${parent.path}")
+          if (orderToKillAkka) context.watch(parent)
+        }
+        case Failure(exception) => {
+          logger.debug(s"there is no more parent to the actor ${ref.path}")
+          if (orderToKillAkka) context.system.shutdown()
+        }
       }
-      if (orderToKillAkka) stopAkka()
+
+      if (watchedRoutee.isEmpty) context.system.shutdown()
+      else watchedRoutee -= ref
+
+    //      if (router.isDefined && router.get.equals(ref)) {
+    //        router = None
+    //      }
+    //      if (orderToKillAkka) stopAkka()
     case KillAkka() => orderToKillAkka = true
-      if (orderToKillAkka) stopAkka()
+    //      if (orderToKillAkka) stopAkka()
     case a => throw new IllegalArgumentException(s"Sent bad argument to ${self.path}: ${a.toString}")
   }
 }

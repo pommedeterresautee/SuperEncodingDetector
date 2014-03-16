@@ -35,10 +35,10 @@ import akka.actor._
 import akka.routing.{RoundRobinPool, Broadcast}
 import scala.Option
 import com.typesafe.scalalogging.slf4j.Logging
-import com.taj.unicode_detector.ActorLifeOverview.RegisterMe
-import com.taj.unicode_detector.ActorLifeOverview.RegisterRootee
-import com.taj.unicode_detector.ActorLifeOverview.StartRegistration
-import com.taj.unicode_detector.ActorLifeOverview.RegisterRooter
+import com.taj.unicode_detector.ActorLife.RegisterMe
+import com.taj.unicode_detector.ActorLife.RegisterRootee
+import com.taj.unicode_detector.ActorLife.StartRegistration
+
 import scala.Some
 import com.taj.unicode_detector.FileFullAnalyzeStateMessages.AnalyzeBlock
 import com.taj.unicode_detector.TestResult.InitAnalyzeFile
@@ -110,7 +110,7 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
   def receive = {
     case StartRegistration(register) =>
       mReaper = Some(register)
-      mReaper.get ! RegisterRooter(routerBlockAnalyzer)
+      //      mReaper.get ! RegisterRooter(routerBlockAnalyzer)
       routerBlockAnalyzer ! Broadcast(RegisterMe(mReaper.get))
 
     case InitAnalyzeFile() =>

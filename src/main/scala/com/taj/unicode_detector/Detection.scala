@@ -37,9 +37,9 @@ import akka.util.Timeout
 import scala.concurrent.Await
 import akka.pattern.ask
 import java.util.concurrent.TimeUnit
-import com.taj.unicode_detector.ActorLifeOverview.StartRegistration
+import com.taj.unicode_detector.ActorLife.StartRegistration
 import scala.Some
-import com.taj.unicode_detector.ActorLifeOverview.KillAkka
+import com.taj.unicode_detector.ActorLife.KillAkka
 import com.taj.unicode_detector.TestResult.{ResultOfTestBOM, InitAnalyzeFile}
 import com.typesafe.scalalogging.slf4j.Logging
 
@@ -76,7 +76,7 @@ class Detection(filePath: String) extends Actor {
       mActorASCIIActorRef ! InitAnalyzeFile()
   }
 
-  def ASCIIResultReceive:Receive = {
+  def ASCIIResultReceive: Receive = {
     case ResultOfTestFullFileAnalyze(Some(ASCII), reaper) =>
       mOriginalSender.get ! ResultOfTestBOM(Some(ASCII))
       reaper ! KillAkka()
@@ -89,7 +89,7 @@ class Detection(filePath: String) extends Actor {
       mActorUTF8ActorRef ! InitAnalyzeFile()
   }
 
-  def UTF8ResultReceive:Receive = {
+  def UTF8ResultReceive: Receive = {
     case ResultOfTestFullFileAnalyze(Some(UTF8NoBOM), reaper) =>
       mOriginalSender.get ! ResultOfTestBOM(Some(UTF8NoBOM))
       reaper ! KillAkka()
