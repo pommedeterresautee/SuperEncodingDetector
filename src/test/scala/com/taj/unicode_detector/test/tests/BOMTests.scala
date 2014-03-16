@@ -4,12 +4,10 @@ import com.taj.unicode_detector.test.FirstListFilesToTest._
 import java.io.{RandomAccessFile, FileInputStream, File}
 import com.taj.unicode_detector.{BOMEncoding, Operations}
 import com.taj.unicode_detector.test.TestFile
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
-import com.typesafe.scalalogging.slf4j.Logging
 import org.apache.commons.codec.digest.DigestUtils
 
 
-object BOMTests extends WordSpecLike with Matchers with BeforeAndAfterAll with Logging {
+object BOMTests extends TestTrait {
   val test: ((TestFile, TestFile)) => Unit = {
     case (first, second) =>
       val firstPath = encodedFileFolder + first.fileName

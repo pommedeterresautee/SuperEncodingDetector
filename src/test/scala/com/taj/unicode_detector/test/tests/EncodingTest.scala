@@ -4,12 +4,10 @@ import java.io.File
 import com.taj.unicode_detector.test.FirstListFilesToTest._
 import com.taj.unicode_detector.{BOMEncoding, Converter, Operations, ParamAkka}
 import java.nio.charset.Charset
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
-import com.typesafe.scalalogging.slf4j.Logging
 import com.taj.unicode_detector.test.TestFile
 
 
-object EncodingTest extends WordSpecLike with Matchers with BeforeAndAfterAll with Logging {
+object EncodingTest extends TestTrait {
   val test: TestFile => Unit = {
     fileToTest =>
       val file = new File(encodedFileFolder, fileToTest.fileName)

@@ -4,11 +4,9 @@ import com.taj.unicode_detector.test.FirstListFilesToTest._
 import com.taj.unicode_detector.{BOMEncoding, Operations, Converter}
 import java.io.File
 import com.taj.unicode_detector.test.TestFile
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
-import com.typesafe.scalalogging.slf4j.Logging
 import java.nio.charset.Charset
 
-object Conversion extends WordSpecLike with Matchers with BeforeAndAfterAll with Logging {
+object Conversion extends TestTrait {
   val test: TestFile => Unit = {
     file =>
       val fileToConvert = encodedFileFolder + file.fileName
