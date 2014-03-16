@@ -66,7 +66,6 @@ object Reaper {
  */
 class Reaper() extends Actor with Logging {
 
-
   val watchedRootee = ArrayBuffer.empty[ActorRef]
   var rooter: Option[ActorRef] = None
   var orderToKillAkka = false
@@ -90,7 +89,9 @@ class Reaper() extends Actor with Logging {
     case Terminated(ref) =>
       logger.debug(s"*** has been removed ${ref.path} ***")
       if (watchedRootee.contains(ref)) watchedRootee -= ref
-      if (rooter.isDefined && rooter.get.equals(ref)) rooter = None
+      if (rooter.isDefined && rooter.get.equals(ref)) {
+        rooter = None
+      }
       if (orderToKillAkka) stopAkka()
     case KillAkka() => orderToKillAkka = true
       if (orderToKillAkka) stopAkka()

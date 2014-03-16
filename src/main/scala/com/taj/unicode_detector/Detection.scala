@@ -222,7 +222,7 @@ object Operations extends Logging {
     try {
       Iterator
         .continually(input.read(bytes))
-        .takeWhile(-1 !=)
+        .takeWhile(_ != -1)
         .foreach(read => output.write(bytes, 0, read))
     } finally {
       input.close()
@@ -244,7 +244,7 @@ object Operations extends Logging {
         val input = removeBOM(path)
         try Iterator
           .continually(input.read(bytes))
-          .takeWhile(-1 !=)
+          .takeWhile(_ != -1)
           .foreach(read => try output.write(bytes, 0, read))
         finally input.close()
     } finally output.close()

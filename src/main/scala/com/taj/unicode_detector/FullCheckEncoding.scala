@@ -32,16 +32,14 @@ package com.taj.unicode_detector
 import java.io.{File, RandomAccessFile}
 
 import akka.actor._
-import akka.routing.RoundRobinRouter
+import akka.routing.{RoundRobinPool, Broadcast}
 import scala.Option
-import com.taj.unicode_detector.TestResult.ResultOfTestFullFileAnalyze
 import com.typesafe.scalalogging.slf4j.Logging
 import com.taj.unicode_detector.ActorLifeOverview.RegisterMe
 import com.taj.unicode_detector.ActorLifeOverview.RegisterRootee
 import com.taj.unicode_detector.ActorLifeOverview.StartRegistration
 import com.taj.unicode_detector.ActorLifeOverview.RegisterRooter
 import scala.Some
-import akka.routing.Broadcast
 import com.taj.unicode_detector.FileFullAnalyzeStateMessages.AnalyzeBlock
 import com.taj.unicode_detector.TestResult.InitAnalyzeFile
 import com.taj.unicode_detector.FileFullAnalyzeStateMessages.Result
@@ -74,7 +72,7 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
     case count: Int => count
   }
   val nbrOfWorkers = ParamAkka.numberOfWorkerRequired(totalLengthToAnalyze)
-  val routerBlockAnalyzer: ActorRef = context.actorOf(Props(new BlockAnalyzer()).withRouter(RoundRobinRouter(nbrOfWorkers)), name = s"Router_${encodingTested.charsetUsed.name()}")
+  val routerBlockAnalyzer: ActorRef = context.actorOf(Props(new BlockAnalyzer()).withRouter(RoundRobinPool(nbrOfWorkers)), name = s"Router_${encodingTested.charsetUsed.name()}")
 
   var masterSender: Option[ActorRef] = None
   var mReaper: Option[ActorRef] = None
