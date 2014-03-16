@@ -29,10 +29,14 @@
 
 package com.taj.unicode_detector
 
-import akka.actor.{Terminated, ActorRef, Actor}
+import akka.actor._
 import scala.collection.mutable.ArrayBuffer
-import com.taj.unicode_detector.ActorLifeOverview._
 import com.typesafe.scalalogging.slf4j.Logging
+import com.taj.unicode_detector.ActorLifeOverview.RegisterRootee
+import com.taj.unicode_detector.ActorLifeOverview.RegisterRooter
+import akka.actor.Terminated
+import scala.Some
+import com.taj.unicode_detector.ActorLifeOverview.KillAkka
 
 object ActorLifeOverview {
 
@@ -48,6 +52,18 @@ object ActorLifeOverview {
 
 }
 
+/**
+ * Watch actor and kill them when the operation is finished.
+ */
+object Reaper {
+  def apply(name: String)(implicit system: ActorSystem): ActorRef = {
+    system.actorOf(Props(new Reaper()), name)
+  }
+}
+
+/**
+ * Watch actor and kill them when the operation is finished.
+ */
 class Reaper() extends Actor with Logging {
 
 

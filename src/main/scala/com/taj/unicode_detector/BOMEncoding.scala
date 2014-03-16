@@ -41,7 +41,6 @@ import java.io.FileInputStream
  */
 case class BOMFileEncoding(charsetUsed: Charset, BOM: List[Int], BOM_XML: List[Int])
 
-
 /**
  * List all the encoding types detected.
  */
@@ -65,7 +64,6 @@ object BOMEncoding {
   val UTF8NoBOM = BOMFileEncoding(StandardCharsets.UTF_8, List(), List('<', '?', 'x', 'm'))
   val ASCII = BOMFileEncoding(StandardCharsets.US_ASCII, List(), List('<', '?', 'x', 'm'))
   //val UnknownEncoding = BOMFileEncoding(Charset.forName("") , List(), List()) //TODO replace by a setable charset at the construction of the instance
-
 
   /**
    * Detects the encoding of a file based on its BOM.
@@ -93,7 +91,6 @@ object BOMEncoding {
       case _ => None
     }
   }
-
 }
 
 /**
