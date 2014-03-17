@@ -30,8 +30,9 @@
 package com.taj.unicode_detector
 
 import java.nio.charset.{StandardCharsets, Charset}
-import akka.actor.Actor
+import akka.actor.{Props, ActorRef, ActorSystem, Actor}
 import java.io.FileInputStream
+import com.taj.unicode_detector.ActorLife.{RegisterRootee, StartRegistration}
 
 /**
  * Contain properties of each BOM.
@@ -93,6 +94,12 @@ object BOMEncoding {
   }
 }
 
+object BOMBasedDetectionActor {
+  def apply(path: String)(implicit system: ActorSystem): ActorRef = {
+    system.actorOf(Props(new BOMBasedDetectionActor(path)), "BOMActor")
+  }
+}
+
 /**
  * This class detects the encoding of a file based on its BOM.
  */
@@ -100,12 +107,12 @@ class BOMBasedDetectionActor(file: String) extends Actor {
 
   import BOMEncoding._
   import TestResult._
-  import akka.actor.PoisonPill
 
   def receive = {
+    case StartRegistration(register) =>
+      register ! RegisterRootee(self)
     case InitAnalyzeFile() =>
       sender ! ResultOfTestBOM(detect(file))
-      self ! PoisonPill
     case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
   }
 }

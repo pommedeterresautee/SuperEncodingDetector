@@ -35,15 +35,13 @@ import akka.actor._
 import akka.routing.{RoundRobinPool, Broadcast}
 import scala.Option
 import com.typesafe.scalalogging.slf4j.Logging
-import com.taj.unicode_detector.ActorLife.RegisterMe
 import com.taj.unicode_detector.ActorLife.RegisterRootee
 import com.taj.unicode_detector.ActorLife.StartRegistration
 
 import scala.Some
 import com.taj.unicode_detector.FileFullAnalyzeStateMessages.AnalyzeBlock
-import com.taj.unicode_detector.TestResult.InitAnalyzeFile
+import com.taj.unicode_detector.TestResult.{ResultOfTestBOM, InitAnalyzeFile}
 import com.taj.unicode_detector.FileFullAnalyzeStateMessages.Result
-import com.taj.unicode_detector.TestResult.ResultOfTestFullFileAnalyze
 
 private object FileFullAnalyzeStateMessages {
 
@@ -72,10 +70,10 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
     case count: Int => count
   }
   val nbrOfWorkers = ParamAkka.numberOfWorkerRequired(totalLengthToAnalyze)
-  val routerBlockAnalyzer: ActorRef = BlockAnalyzer(nbrOfWorkers, encodingTested)
+  val routerBlockAnalyzerActor: ActorRef = BlockAnalyzer(nbrOfWorkers, encodingTested)
 
   var masterSender: Option[ActorRef] = None
-  var mReaper: Option[ActorRef] = None
+  //  var mReaper: Option[ActorRef] = None
   var startAnalyzeTime = 0l
   var resultReceived = 0
 
@@ -86,12 +84,12 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
   val resultState: Receive = {
     case Result(actor, filePath, nonMatchingCharPositionInFile) if resultReceived == numberOfPartToAnalyze && nonMatchingCharPositionInFile.isEmpty => // finished and match
       context.become(discardAkkaMessages)
-      masterSender.get ! ResultOfTestFullFileAnalyze(Some(encodingTested), mReaper.get)
-      routerBlockAnalyzer ! Broadcast(PoisonPill)
+      masterSender.get ! ResultOfTestBOM(Some(encodingTested))
+      routerBlockAnalyzerActor ! Broadcast(PoisonPill)
     case Result(actor, filePath, nonMatchingCharPositionInFile) if nonMatchingCharPositionInFile.isDefined => // finished no match
       context.become(discardAkkaMessages)
-      masterSender.get ! ResultOfTestFullFileAnalyze(None, mReaper.get)
-      routerBlockAnalyzer ! Broadcast(PoisonPill)
+      masterSender.get ! ResultOfTestBOM(None)
+      routerBlockAnalyzerActor ! Broadcast(PoisonPill)
       logger.debug(s"First char non matching with the encoding ${encodingTested.charsetUsed.name()} is at position ${nonMatchingCharPositionInFile.get}.")
     case Result(actor, filePath, nonMatchingCharPositionInFile) => // continue process
       resultReceived += 1
@@ -109,10 +107,7 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
 
   def receive = {
     case StartRegistration(register) =>
-      mReaper = Some(register)
-      //      mReaper.get ! RegisterRooter(routerBlockAnalyzer)
-      routerBlockAnalyzer ! Broadcast(RegisterMe(mReaper.get))
-
+      register ! RegisterRootee(routerBlockAnalyzerActor)
     case InitAnalyzeFile() =>
       startAnalyzeTime = System.currentTimeMillis
       masterSender = Some(sender())
@@ -121,7 +116,7 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
       // Initialization of the workers
       (0 to nbrOfWorkers - 1)
         .foreach(partNumber =>
-        routerBlockAnalyzer ! AnalyzeBlock(path, partNumber * ParamAkka.sizeOfaPartToAnalyze, ParamAkka.sizeOfaPartToAnalyze, ParamAkka.bufferSize, testToOperate))
+        routerBlockAnalyzerActor ! AnalyzeBlock(path, partNumber * ParamAkka.sizeOfaPartToAnalyze, ParamAkka.sizeOfaPartToAnalyze, ParamAkka.bufferSize, testToOperate))
 
     case _ => throw new IllegalArgumentException("Sent bad parameters to Actor " + self.path.name)
   }
@@ -149,7 +144,6 @@ private class BlockAnalyzer() extends Actor with Logging {
 
       sender ! analyzedBlockResult
 
-    case RegisterMe(reg: ActorRef) => reg ! RegisterRootee(self)
     case badMessage => throw new IllegalArgumentException(s"Sent bad parameters (${badMessage.toString}) to Actor ${self.path}")
   }
 

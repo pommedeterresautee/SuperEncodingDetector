@@ -30,27 +30,18 @@
 package com.taj.unicode_detector
 
 import akka.actor._
-import scala.collection.mutable.ArrayBuffer
 import com.typesafe.scalalogging.slf4j.Logging
 import com.taj.unicode_detector.ActorLife.RegisterRootee
 
 import akka.actor.Terminated
 import com.taj.unicode_detector.ActorLife.KillAkka
-import scala.util.{Failure, Success}
-import akka.util.Timeout
-import scala.concurrent.duration.FiniteDuration
-import java.util.concurrent.TimeUnit
-import scala.concurrent.ExecutionContext
+import scala.collection.mutable
 
 object ActorLife {
 
   case class StartRegistration(registrer: ActorRef)
 
-  case class RegisterRootee(ref: ActorRef)
-
-  //  case class RegisterRooter(ref: ActorRef)
-
-  case class RegisterMe(ref: ActorRef)
+  case class RegisterRootee(parent: ActorRef)
 
   case class KillAkka()
 
@@ -69,52 +60,27 @@ object Reaper {
  * Watch actor and kill them when the operation is finished.
  */
 class Reaper() extends Actor with Logging {
-
-  val watchedRoutee = ArrayBuffer.empty[ActorRef]
-  //  var router: Option[ActorRef] = None
+  val watched: mutable.Set[ActorRef] = mutable.Set()
   var orderToKillAkka = false
 
-  //  def stopAkka() {
-  //    if (router.isEmpty) {
-  //      logger.debug("*** Every body is gone ***")
-  //      context.system.shutdown()
-  //    }
-  //  }
-
   def receive = {
-    case RegisterRootee(refRoutee) =>
-      logger.debug(s"*** Register rootee ${refRoutee.path} ***")
-      context.watch(refRoutee)
-      watchedRoutee += refRoutee
-    //    case RegisterRooter(refRooter) =>
-    //      logger.debug(s"*** Regiser rooter ${refRooter.path} ***")
-    //      context.watch(refRooter)
-    //      router = Some(refRooter)
+    case RegisterRootee(parent) =>
+      logger.debug(s"*** Register rootee ${parent.path} ***")
+      context.watch(parent)
+      watched += parent
     case Terminated(ref) =>
       logger.debug(s"*** Has been removed ${ref.path} ***")
-      import ExecutionContext.Implicits.global
-      implicit val timeout = Timeout(FiniteDuration(1, TimeUnit.MINUTES))
-
-      if (watchedRoutee.size == 1) context.actorSelection(ref.path.parent).resolveOne().onComplete {
-        case Success(parent) => {
-          logger.debug(s"Get the parent actor reference ${parent.path}")
-          if (orderToKillAkka) context.watch(parent)
-        }
-        case Failure(exception) => {
-          logger.debug(s"there is no more parent to the actor ${ref.path}")
-          if (orderToKillAkka) context.system.shutdown()
-        }
-      }
-
-      if (watchedRoutee.isEmpty) context.system.shutdown()
-      else watchedRoutee -= ref
-
-    //      if (router.isDefined && router.get.equals(ref)) {
-    //        router = None
-    //      }
-    //      if (orderToKillAkka) stopAkka()
+      watched -= ref
+      byeBye()
     case KillAkka() => orderToKillAkka = true
-    //      if (orderToKillAkka) stopAkka()
+      byeBye()
     case a => throw new IllegalArgumentException(s"Sent bad argument to ${self.path}: ${a.toString}")
+  }
+
+  def byeBye() {
+    if (orderToKillAkka && watched.isEmpty) {
+      logger.debug("*** Stop the Akka system ***")
+      context.system.shutdown()
+    }
   }
 }
