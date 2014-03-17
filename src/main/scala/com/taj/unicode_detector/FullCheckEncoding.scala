@@ -72,7 +72,7 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
     case count: Int => count
   }
   val nbrOfWorkers = ParamAkka.numberOfWorkerRequired(totalLengthToAnalyze)
-  val routerBlockAnalyzer: ActorRef = context.actorOf(Props(new BlockAnalyzer()).withRouter(RoundRobinPool(nbrOfWorkers)), name = s"Router_${encodingTested.charsetUsed.name()}")
+  val routerBlockAnalyzer: ActorRef = BlockAnalyzer(nbrOfWorkers, encodingTested)
 
   var masterSender: Option[ActorRef] = None
   var mReaper: Option[ActorRef] = None
@@ -128,6 +128,12 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
 
   override def postStop(): Unit = {
     logger.debug(s"*** Processed Actor ${self.path} in ${System.currentTimeMillis() - startAnalyzeTime}ms ***")
+  }
+}
+
+private object BlockAnalyzer {
+  def apply(nbrOfWorkers: Int, encodingTested: BOMFileEncoding)(implicit context: ActorContext): ActorRef = {
+    context.actorOf(Props(new BlockAnalyzer()).withRouter(RoundRobinPool(nbrOfWorkers)), name = s"Router_${encodingTested.charsetUsed.name()}")
   }
 }
 
