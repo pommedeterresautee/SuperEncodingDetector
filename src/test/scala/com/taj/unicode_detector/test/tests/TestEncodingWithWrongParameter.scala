@@ -51,7 +51,7 @@ object TestEncodingWithWrongParameter extends TestTrait {
         }
 
         s"should not be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on its BOM" in {
-          val detection = Operations.detect(file.getAbsolutePath)
+          val detection = Operations.fullDetect(file.getAbsolutePath)
           detection should not equal fileToTest.encoding
         }
 

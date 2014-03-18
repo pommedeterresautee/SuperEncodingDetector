@@ -40,14 +40,14 @@ import java.util.concurrent.TimeUnit
 import com.taj.unicode_detector.ActorLife.StartRegistration
 import scala.Some
 import com.taj.unicode_detector.ActorLife.KillAkka
-import com.taj.unicode_detector.TestResult.{ResultOfTestBOM, InitAnalyzeFile}
+import com.taj.unicode_detector.TestResult.{ResultOfTestBOM, StartFileAnalyze}
 import com.typesafe.scalalogging.slf4j.Logging
 import com.taj.unicode_detector.HeuristicEncodingDetection._
 
 
 object TestResult {
 
-  case class InitAnalyzeFile()
+  case class StartFileAnalyze()
 
   case class ResultOfTestBOM(result: Option[BOMFileEncoding])
 
@@ -74,7 +74,7 @@ class Detection(filePath: String) extends Actor {
       context.become(ASCIIResultReceive)
       val mActorASCIIActorRef = FileAnalyzer(ASCII, mFile.get, ParamAkka.checkASCII, name = "ASCIIFileAnalyzer")
       mActorASCIIActorRef ! StartRegistration(reaper)
-      mActorASCIIActorRef ! InitAnalyzeFile()
+      mActorASCIIActorRef ! StartFileAnalyze()
   }
 
   def ASCIIResultReceive: Receive = {
@@ -85,7 +85,7 @@ class Detection(filePath: String) extends Actor {
       context.become(UTF8ResultReceive)
       val mActorUTF8ActorRef = FileAnalyzer(UTF8NoBOM, mFile.get, ParamAkka.checkUTF8, name = "UTF8FileAnalyzer")
       mActorUTF8ActorRef ! StartRegistration(reaper)
-      mActorUTF8ActorRef ! InitAnalyzeFile()
+      mActorUTF8ActorRef ! StartFileAnalyze()
   }
 
   def UTF8ResultReceive: Receive = {
@@ -98,12 +98,19 @@ class Detection(filePath: String) extends Actor {
   }
 
   def receive = {
-    case InitAnalyzeFile() =>
+    case StartFileAnalyze() =>
       context.become(bomResultReceive)
       mFile = Some(filePath)
       mOriginalSender = Some(sender())
       val BOMActor = BOMBasedDetectionActor(filePath)
-      BOMActor ! InitAnalyzeFile()
+      BOMActor ! StartFileAnalyze()
+  }
+}
+
+
+object MiniDetection extends Logging {
+  def apply(path: String)(implicit system: ActorSystem): ActorRef = {
+    system.actorOf(Props(new MiniDetection(path)), "MiniDetection")
   }
 }
 
@@ -114,7 +121,6 @@ class Detection(filePath: String) extends Actor {
 class MiniDetection(file: String) extends Actor {
 
   implicit val sys = context.system
-
   var mOriginalSender: Option[ActorRef] = None
 
   def BOMDetectionResultReceive: Receive = {
@@ -122,15 +128,15 @@ class MiniDetection(file: String) extends Actor {
       mOriginalSender.get ! detectedEncoding.charsetUsed
     case ResultOfTestBOM(None) =>
       val HeuristicActor = HeuristicEncodingDetection(file)
-      HeuristicActor ! InitAnalyzeFile()
+      HeuristicActor ! StartFileAnalyze()
   }
 
   def receive = {
-    case InitAnalyzeFile() =>
+    case StartFileAnalyze() =>
       context.become(BOMDetectionResultReceive)
       mOriginalSender = Some(sender())
       val BOMActor = BOMBasedDetectionActor(file)
-      BOMActor ! InitAnalyzeFile()
+      BOMActor ! StartFileAnalyze()
   }
 }
 
@@ -139,12 +145,12 @@ class MiniDetection(file: String) extends Actor {
  */
 object Operations extends Logging {
 
-  def detect(file: String): Charset = {
+  def fullDetect(file: String): Charset = {
     implicit val timeout = Timeout(2, TimeUnit.MINUTES)
 
     val system: ActorSystem = ActorSystem("ActorSystemFileIdentification")
     val detector = system.actorOf(Props(new Detection(file)), name = "Detector")
-    Await.result(detector ? InitAnalyzeFile(), timeout.duration) match {
+    Await.result(detector ? StartFileAnalyze(), timeout.duration) match {
       case ResultOfTestBOM(Some(detectedEncoding)) => detectedEncoding.charsetUsed
       case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during the check")
     }
@@ -157,9 +163,9 @@ object Operations extends Logging {
    */
   def miniDetect(file: String): Charset = {
     implicit val timeout = Timeout(2, TimeUnit.MINUTES)
-    val system: ActorSystem = ActorSystem("SystemEncodingFileIdentification")
-    val detector = system.actorOf(Props(new MiniDetection(file)), name = "MiniDetector")
-    val result = Await.result(detector ? InitAnalyzeFile(), timeout.duration) match {
+    implicit val system: ActorSystem = ActorSystem("SystemMiniDetect")
+    val detector = MiniDetection(file)
+    val result = Await.result(detector ? StartFileAnalyze(), timeout.duration) match {
       case charset: Charset => charset
       case Some(charset: Charset) => charset
       case u => throw new IllegalArgumentException(s"Failed to retrieve result from Actor: $u.")

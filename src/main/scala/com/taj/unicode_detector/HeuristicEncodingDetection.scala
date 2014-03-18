@@ -34,7 +34,7 @@ import com.ibm.icu.text.CharsetDetector
 import java.io.{BufferedInputStream, FileInputStream}
 import akka.actor.{Props, ActorSystem, ActorRef, Actor}
 import com.taj.unicode_detector.ActorLife.{RegisterRootee, StartRegistration}
-import com.taj.unicode_detector.TestResult.{ResultOfTestBOM, InitAnalyzeFile}
+import com.taj.unicode_detector.TestResult.{ResultOfTestBOM, StartFileAnalyze}
 import com.typesafe.scalalogging.slf4j.Logging
 
 
@@ -68,8 +68,8 @@ class HeuristicEncodingDetection(path: String) extends Actor {
   def receive = {
     case StartRegistration(register) =>
       register ! RegisterRootee(self)
-    case InitAnalyzeFile() =>
-      val encoding = HeuristicEncodingDetection.detectEncoding(path)
+    case StartFileAnalyze() =>
+    val encoding = HeuristicEncodingDetection.detectEncoding(path)
       val result: ResultOfTestBOM = ResultOfTestBOM(Some(BOMFileEncoding(encoding, List(), List())))
       sender ! result
     case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")

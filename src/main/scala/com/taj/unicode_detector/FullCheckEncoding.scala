@@ -40,7 +40,7 @@ import com.taj.unicode_detector.ActorLife.StartRegistration
 
 import scala.Some
 import com.taj.unicode_detector.FileFullAnalyzeStateMessages.AnalyzeBlock
-import com.taj.unicode_detector.TestResult.{ResultOfTestBOM, InitAnalyzeFile}
+import com.taj.unicode_detector.TestResult.{ResultOfTestBOM, StartFileAnalyze}
 import com.taj.unicode_detector.FileFullAnalyzeStateMessages.Result
 
 private object FileFullAnalyzeStateMessages {
@@ -108,7 +108,7 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
   def receive = {
     case StartRegistration(register) =>
       register ! RegisterRootee(routerBlockAnalyzerActor)
-    case InitAnalyzeFile() =>
+    case StartFileAnalyze() =>
       startAnalyzeTime = System.currentTimeMillis
       masterSender = Some(sender())
       context.become(resultState)

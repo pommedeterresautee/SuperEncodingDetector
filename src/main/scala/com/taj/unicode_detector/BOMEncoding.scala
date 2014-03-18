@@ -111,8 +111,8 @@ class BOMBasedDetectionActor(file: String) extends Actor {
   def receive = {
     case StartRegistration(register) =>
       register ! RegisterRootee(self)
-    case InitAnalyzeFile() =>
-      sender ! ResultOfTestBOM(detect(file))
+    case StartFileAnalyze() =>
+    sender ! ResultOfTestBOM(detect(file))
     case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
   }
 }

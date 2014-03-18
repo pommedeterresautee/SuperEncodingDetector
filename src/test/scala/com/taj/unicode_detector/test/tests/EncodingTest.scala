@@ -45,19 +45,27 @@ object EncodingTest extends TestTrait {
       var workerCount = 0
 
       s"${fileToTest.fileName} file" must {
-        s"Workers quantity should be evaluated equals to ${fileToTest.workingActorsNeeded}" in {
+        s"Workers quantity should be evaluated equals to ${fileToTest.workingActorsNeeded}." in {
           fileSize = file.length()
           workerCount = ParamAkka.numberOfWorkerRequired(fileSize)
           workerCount should equal(fileToTest.workingActorsNeeded)
         }
 
-        s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on its BOM" in {
-          val detection: Charset = Operations.detect(file.getAbsolutePath)
+        s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on its BOM." in {
+          val detection: Charset = Operations.fullDetect(file.getAbsolutePath)
           detection should equal(fileToTest.encoding.charsetUsed)
         }
 
-        s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on its content" in {
+        s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on an Heuristic analyze only." in {
           val detection = detectEncoding(file.getAbsolutePath)
+          fileToTest.encoding.charsetUsed match {
+            case charset if !charset.equals(BOMEncoding.ASCII.charsetUsed) => detection should equal(charset)
+            case _ =>
+          }
+        }
+
+        s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on BOM analyze then heuristic analyze." in {
+          val detection = Operations.miniDetect(file.getAbsolutePath)
           fileToTest.encoding.charsetUsed match {
             case charset if !charset.equals(BOMEncoding.ASCII.charsetUsed) => detection should equal(charset)
             case _ =>

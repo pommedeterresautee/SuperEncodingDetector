@@ -45,7 +45,7 @@ object Conversion extends TestTrait {
         Converter.convert2ASCII(fileToConvert, convertedFile)
         new File(convertedFile) should be('exists)
         convertedFile.length should be > 0
-        val encoding = Operations.detect(convertedFile)
+        val encoding = Operations.fullDetect(convertedFile)
         encoding should equal(BOMEncoding.ASCII.charsetUsed)
       }
   }
@@ -59,7 +59,7 @@ object Conversion extends TestTrait {
         Converter.convert2UTF_8(file.getAbsolutePath, fileConverted.getAbsolutePath)
         fileConverted should be('exists)
         fileConverted.length should be > 0l
-        val encoding = Operations.detect(fileConverted.getAbsolutePath)
+        val encoding = Operations.fullDetect(fileConverted.getAbsolutePath)
         encoding should equal(BOMEncoding.UTF8NoBOM.charsetUsed)
         val encoding_bis = detectEncoding(fileConverted.getAbsolutePath)
         encoding_bis should equal(BOMEncoding.UTF8NoBOM.charsetUsed)
