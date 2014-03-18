@@ -33,7 +33,7 @@ import java.text.Normalizer
 import java.nio.charset.{StandardCharsets, Charset}
 import scala.io.{BufferedSource, Source}
 import java.io._
-import com.ibm.icu.text.CharsetDetector
+import com.taj.unicode_detector.HeuristicEncodingDetection._
 import scala.Some
 
 /**
@@ -87,19 +87,5 @@ object Converter {
     }
   }
 
-  /**
-   * Detects the encoding of a text file based on Heuristic analyze.
-   * @param path path to the file to analyze.
-   * @return the name of the encoding as a String.
-   */
-  def detectEncoding(path: String): Charset = {
-    val detector = new CharsetDetector()
-    val byteData = new Array[Byte](1024 * 30)
-    val is = new FileInputStream(path)
-    try is.read(byteData)
-    finally is.close()
-    detector.setText(byteData)
-    val matcher = detector.detect()
-    Charset.forName(matcher.getName)
-  }
+
 }

@@ -77,6 +77,9 @@ class Reaper() extends Actor with Logging {
     case a => throw new IllegalArgumentException(s"Sent bad argument to ${self.path}: ${a.toString}")
   }
 
+  /**
+   * Stop Akka system if all works are finished
+   */
   def byeBye() {
     if (orderToKillAkka && watched.isEmpty) {
       logger.debug("*** Stop the Akka system ***")

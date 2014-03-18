@@ -133,7 +133,7 @@ private object BlockAnalyzer {
 }
 
 /**
- * Make the effective detection.
+ * Actually process the encoding detection.
  */
 private class BlockAnalyzer() extends Actor with Logging {
 

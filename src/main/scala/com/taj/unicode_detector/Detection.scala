@@ -42,6 +42,7 @@ import scala.Some
 import com.taj.unicode_detector.ActorLife.KillAkka
 import com.taj.unicode_detector.TestResult.{ResultOfTestBOM, InitAnalyzeFile}
 import com.typesafe.scalalogging.slf4j.Logging
+import com.taj.unicode_detector.HeuristicEncodingDetection._
 
 
 object TestResult {
@@ -92,7 +93,7 @@ class Detection(filePath: String) extends Actor {
     mOriginalSender.get ! ResultOfTestBOM(Some(UTF8NoBOM))
       reaper ! KillAkka()
     case ResultOfTestBOM(None) =>
-    mOriginalSender.get ! ResultOfTestBOM(Some(BOMFileEncoding(Converter.detectEncoding(filePath), List(), List())))
+      mOriginalSender.get ! ResultOfTestBOM(Some(BOMFileEncoding(detectEncoding(filePath), List(), List())))
       reaper ! KillAkka()
   }
 
@@ -112,23 +113,24 @@ class Detection(filePath: String) extends Actor {
  */
 class MiniDetection(file: String) extends Actor {
 
-  import TestResult._
-
-  var mActorUTF8: Option[ActorRef] = None
-  var mFile: Option[String] = None
+  implicit val sys = context.system
 
   var mOriginalSender: Option[ActorRef] = None
 
-  def receive = {
-    case InitAnalyzeFile() =>
-      mFile = Some(file)
-      mOriginalSender = Some(sender)
-      val BOMActor = context.system.actorOf(Props(new BOMBasedDetectionActor(file)), name = "BOMActor")
-      BOMActor ! InitAnalyzeFile()
+  def BOMDetectionResultReceive: Receive = {
     case ResultOfTestBOM(Some(detectedEncoding)) =>
       mOriginalSender.get ! detectedEncoding.charsetUsed
     case ResultOfTestBOM(None) =>
-      mOriginalSender.get ! Converter.detectEncoding(file)
+      val HeuristicActor = HeuristicEncodingDetection(file)
+      HeuristicActor ! InitAnalyzeFile()
+  }
+
+  def receive = {
+    case InitAnalyzeFile() =>
+      context.become(BOMDetectionResultReceive)
+      mOriginalSender = Some(sender())
+      val BOMActor = BOMBasedDetectionActor(file)
+      BOMActor ! InitAnalyzeFile()
   }
 }
 
