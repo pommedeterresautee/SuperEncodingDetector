@@ -41,10 +41,10 @@ object main extends App with Logging {
 
   val BIG_FILE = encodedFileFolder + "UTF8_without_BOM_big_file.txt"
   val SECOND_FILE = encodedFileFolder + "UTF16_LE.txt"
-  val arg = Array("--encoding", BIG_FILE, SECOND_FILE, "--debug")
+  val arg = Array("--encoding", BIG_FILE, SECOND_FILE)
   val help = Array("--help")
 
-  val opts = new ScallopConf(args) {
+  val opts = new ScallopConf(arg) {
     banner( """
               | ____                          _____                     _                 ____       _            _
               |/ ___| _   _ _ __   ___ _ __  | ____|_ __   ___ ___   __| (_)_ __   __ _  |  _ \  ___| |_ ___  ___| |_ ___  _ __
@@ -92,15 +92,24 @@ For usage see below:
 
   System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, if (opts.debug.get.getOrElse(false)) "debug" else "info")
 
-  opts.encoding.get.map(_.map(path => (path, Operations.miniDetect(path))).foreach {
-    case (file, encoding) if opts.output.get.isEmpty => println(file + " ; " + encoding.name())
-    case (file, encoding) if opts.output.get.isDefined =>
-      val w = new BufferedWriter(new FileWriter(opts.output.get.get, true))
-      w.write(file + " ; " + encoding.name())
-      w.newLine()
-      w.close()
-    case _ => throw new IllegalArgumentException("Wrong argument provided")
-  })
+  // delete existing output file
+  opts.output.get.map(new File(_)).filter(_.exists()).foreach(_.delete())
+
+  opts.encoding.get
+    .map(
+      _.map(path => (path, Operations.miniDetect(path)))
+        .map {
+        case (file, encoding) => file + ";" + encoding.name()
+      }
+        .foreach {
+        case result if opts.output.get.isEmpty => println(result)
+        case result if opts.output.get.isDefined =>
+          val w = new BufferedWriter(new FileWriter(opts.output.get.get, true))
+          w.write(result)
+          w.newLine()
+          w.close()
+        case _ => throw new IllegalArgumentException("Wrong argument provided")
+      })
 
   val convert8859_15 = opts.convert8859_15.get
   convert8859_15 match {
