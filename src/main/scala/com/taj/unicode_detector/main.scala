@@ -32,26 +32,27 @@ package com.taj.unicode_detector
 import java.io.{BufferedWriter, FileWriter, File}
 import org.rogach.scallop._
 import org.slf4j.impl.SimpleLogger
+import com.typesafe.scalalogging.slf4j.Logging
 
-object main extends App {
+object main extends App with Logging {
 
   val testResourcesFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}"
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
 
   val BIG_FILE = encodedFileFolder + "UTF8_without_BOM_big_file.txt"
   val SECOND_FILE = encodedFileFolder + "UTF16_LE.txt"
-  val arg = Array("--encoding", BIG_FILE, "--debug")
+  val arg = Array("--encoding", BIG_FILE, SECOND_FILE, "--debug")
   val help = Array("--help")
 
-  val opts = new ScallopConf(arg) {
-    banner("""
-                | ____                          _____                     _                 ____       _            _
-                |/ ___| _   _ _ __   ___ _ __  | ____|_ __   ___ ___   __| (_)_ __   __ _  |  _ \  ___| |_ ___  ___| |_ ___  _ __
-                |\___ \| | | |  _ \ / _ \ '__| |  _| | '_ \ / __/ _ \ / _` | | '_ \ / _` | | | | |/ _ \ __/ _ \/ __| __/ _ \| '__|
-                | ___) | |_| | |_) |  __/ |    | |___| | | | (_| (_) | (_| | | | | | (_| | | |_| |  __/ ||  __/ (__| || (_) | |
-                ||____/ \____| .__/ \___|_|    |_____|_| |_|\___\___/ \____|_|_| |_|\__, | |____/ \___|\__\___|\___|\__\___/|_|
-                |            |_|                                                    |___/
-                |
+  val opts = new ScallopConf(args) {
+    banner( """
+              | ____                          _____                     _                 ____       _            _
+              |/ ___| _   _ _ __   ___ _ __  | ____|_ __   ___ ___   __| (_)_ __   __ _  |  _ \  ___| |_ ___  ___| |_ ___  _ __
+              |\___ \| | | |  _ \ / _ \ '__| |  _| | '_ \ / __/ _ \ / _` | | '_ \ / _` | | | | |/ _ \ __/ _ \/ __| __/ _ \| '__|
+              | ___) | |_| | |_) |  __/ |    | |___| | | | (_| (_) | (_| | | | | | (_| | | |_| |  __/ ||  __/ (__| || (_) | |
+              ||____/ \____| .__/ \___|_|    |_____|_| |_|\___\___/ \____|_|_| |_|\__, | |____/ \___|\__\___|\___|\__\___/|_|
+              |            |_|                                                    |___/
+              |
               		""".stripMargin + s"""
 SuperEncodingDetector will help you to manage text files in different encoding format.
 This application is good for working with the different Unicode version and ASCII character set but not to manage national specific code pages.
@@ -65,7 +66,9 @@ Example: java -jar SuperEncodingDetector.jar --input .${File.separator}path1${Fi
 
 For usage see below:
            """)
-    val filesExist: List[String] => Boolean = _.forall(new File(_).exists())
+    val filesExist: List[String] => Boolean = _.forall {
+      new File(_).exists()
+    }
 
     val encoding = opt[List[String]]("encoding", descr = "Print the detected encoding of each file provided.", validate = filesExist)
     //val removeBOM = opt[String]("removeBOM", descr = "Remove the Byte Order Mark from a file. Use output option to provide the destination folder.", validate = new File(_).exists())
@@ -81,7 +84,7 @@ For usage see below:
     dependsOnAll(merge, List(outputFolder))
     dependsOnAll(convertUTF8, List(outputFolder))
     dependsOnAll(convert8859_15, List(outputFolder))
-//    dependsOnAll(convertASCII, List(outputFolder))
+    //    dependsOnAll(convertASCII, List(outputFolder))
 
     conflicts(merge, List(encoding, help /*, version*/))
     conflicts(encoding, List(merge, help /*, version*/))
