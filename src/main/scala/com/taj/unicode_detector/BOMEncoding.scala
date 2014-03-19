@@ -34,6 +34,11 @@ import akka.actor.{Props, ActorRef, ActorSystem, Actor}
 import java.io.FileInputStream
 import com.taj.unicode_detector.ActorLife.{RegisterRootee, StartRegistration}
 
+
+object BOMFileEncoding {
+  def apply(charsetUsed: Charset) = new BOMFileEncoding(charsetUsed, List(), List())
+}
+
 /**
  * Contain properties of each BOM.
  * @param charsetUsed Encoding type.
@@ -64,14 +69,13 @@ object BOMEncoding {
   val UTF8 = BOMFileEncoding(StandardCharsets.UTF_8, List(0xEF, 0xBB, 0xBF), List(0x4C, 0x6F, 0xA7, 0x94))
   val UTF8NoBOM = BOMFileEncoding(StandardCharsets.UTF_8, List(), List('<', '?', 'x', 'm'))
   val ASCII = BOMFileEncoding(StandardCharsets.US_ASCII, List(), List('<', '?', 'x', 'm'))
-  //val UnknownEncoding = BOMFileEncoding(Charset.forName("") , List(), List()) //TODO replace by a setable charset at the construction of the instance
 
   /**
    * Detects the encoding of a file based on its BOM.
    * @param file path to the file.
    * @return the encoding. If no BOM detected, send back ASCII encoding.
    */
-  def detect(file: String): Option[BOMFileEncoding] = {
+  def detectBOM(file: String): Option[BOMFileEncoding] = {
     val in = new FileInputStream(file)
     val bytesToRead = 1024 // enough to read most XML encoding declarations
 
@@ -112,7 +116,8 @@ class BOMBasedDetectionActor(file: String) extends Actor {
     case StartRegistration(register) =>
       register ! RegisterRootee(self)
     case StartFileAnalyze() =>
-    sender ! ResultOfTestBOM(detect(file))
+      val result = detectBOM(file)
+      sender ! ResultOfTestBOM(result)
     case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
   }
 }

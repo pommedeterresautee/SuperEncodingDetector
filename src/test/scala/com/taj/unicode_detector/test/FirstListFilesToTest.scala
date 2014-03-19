@@ -23,7 +23,7 @@ object FirstListFilesToTest {
   val UTF16_BE = TestFile("UTF16_BE.txt", BOMEncoding.UTF_16_BE, 1)
   val UTF16_LE = TestFile("UTF16_LE.txt", BOMEncoding.UTF_16_LE, 1)
   val ASCII = TestFile("ASCII.txt", BOMEncoding.ASCII, 1)
-  val Windows_1252 = TestFile("Windows_1252.txt", BOMFileEncoding(Charset.forName("ISO-8859-2"), List(), List()), 1)
+  val Windows_1252 = TestFile("Windows_1252.txt", BOMFileEncoding(Charset.forName("ISO-8859-2")), 1)
 }
 
 /**

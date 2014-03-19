@@ -93,7 +93,7 @@ class Detection(filePath: String) extends Actor {
     mOriginalSender.get ! ResultOfTestBOM(Some(UTF8NoBOM))
       reaper ! KillAkka()
     case ResultOfTestBOM(None) =>
-      mOriginalSender.get ! ResultOfTestBOM(Some(BOMFileEncoding(detectEncoding(filePath), List(), List())))
+      mOriginalSender.get ! ResultOfTestBOM(Some(BOMFileEncoding(detectEncoding(filePath))))
       reaper ! KillAkka()
   }
 
@@ -198,7 +198,7 @@ object Operations extends Logging {
    * @return
    */
   def removeBOM(path: String): FileInputStream = {
-    BOMEncoding.detect(path) match {
+    BOMEncoding.detectBOM(path) match {
       case None => new FileInputStream(path)
       case Some(bom) =>
         val toDrop = bom.BOM.size

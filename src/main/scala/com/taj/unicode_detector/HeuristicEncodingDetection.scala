@@ -69,8 +69,8 @@ class HeuristicEncodingDetection(path: String) extends Actor {
     case StartRegistration(register) =>
       register ! RegisterRootee(self)
     case StartFileAnalyze() =>
-    val encoding = HeuristicEncodingDetection.detectEncoding(path)
-      val result: ResultOfTestBOM = ResultOfTestBOM(Some(BOMFileEncoding(encoding, List(), List())))
+      val encoding = HeuristicEncodingDetection.detectEncoding(path)
+      val result: ResultOfTestBOM = ResultOfTestBOM(Some(BOMFileEncoding(encoding)))
       sender ! result
     case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
   }
