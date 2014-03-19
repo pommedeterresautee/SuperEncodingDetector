@@ -3,7 +3,7 @@ package com.taj.unicode_detector.Encoding
 import com.taj.unicode_detector.Encoding.BOM.BOMFileEncoding
 
 /**
- * Created by geantvert on 19/03/14.
+ * Defines the message to send an encoding detection result.
  */
 object MessageResult {
 

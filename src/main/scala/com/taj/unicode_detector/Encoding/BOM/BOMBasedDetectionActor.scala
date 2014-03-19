@@ -1,16 +1,16 @@
 package com.taj.unicode_detector.Encoding.BOM
 
-import akka.actor.{Actor, Props, ActorRef, ActorSystem}
-import com.taj.unicode_detector.ActorLife.RegisterRootee
-import com.taj.unicode_detector.ActorLife.StartRegistration
+import akka.actor._
 import com.taj.unicode_detector.Encoding.MessageResult
+import com.taj.unicode_detector.ActorLife.RegisterMe
+import com.taj.unicode_detector.ActorLife.StartRegistration
 
 /**
  * Created by geantvert on 19/03/14.
  */
 object BOMBasedDetectionActor {
-  def apply(path: String)(implicit system: ActorSystem): ActorRef = {
-    system.actorOf(Props(new BOMBasedDetectionActor(path)), "BOMActor")
+  def apply(path: String)(implicit context: ActorContext): ActorRef = {
+    context.system.actorOf(Props(new BOMBasedDetectionActor(path)), "BOMActor")
   }
 }
 
@@ -24,7 +24,7 @@ class BOMBasedDetectionActor(file: String) extends Actor {
 
   def receive = {
     case StartRegistration(register) =>
-      register ! RegisterRootee(self)
+      register ! RegisterMe(self)
     case StartFileAnalyze() =>
       val result = detectBOM(file)
       sender ! ResultOfTestBOM(result)

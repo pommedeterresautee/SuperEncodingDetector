@@ -12,13 +12,13 @@ import com.taj.unicode_detector.Encoding.MessageResult.{ResultOfTestBOM, StartFi
 import com.taj.unicode_detector.Encoding.FullCheck.FileAnalyzer
 
 /**
- * Created by geantvert on 19/03/14.
+ * Detect encoding of a file based on BOM detection then on full check algorithm.
+ * @param filePath path to the file to analyze.
  */
-class Detection(filePath: String) extends Actor {
+class FullDetection(filePath: String) extends Actor {
 
   import BOMEncoding._
 
-  implicit val sys = context.system
   var mActorUTF8: Option[ActorRef] = None
   var mFile: Option[String] = None
   val fileName = new File(filePath).getName

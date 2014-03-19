@@ -29,7 +29,7 @@
 
 package com.taj.unicode_detector.CommandLine
 
-import java.io.{BufferedWriter, FileWriter, File}
+import java.io.File
 import org.slf4j.impl.SimpleLogger
 import com.typesafe.scalalogging.slf4j.Logging
 import com.taj.unicode_detector.Converter
@@ -45,28 +45,17 @@ object Main extends App with Logging {
   val arg = Array("--encoding", BIG_FILE, SECOND_FILE)
   val help = Array("--help")
 
-  val opts = new CommandLineParser(args)
+  val opts = new CommandLineParser(arg)
 
   System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, if (opts.debug.get.getOrElse(false)) "debug" else "info")
 
   // delete existing output file
   opts.output.get.map(new File(_)).filter(_.exists()).foreach(_.delete())
 
-  opts.encoding.get
-    .map(
-      _.map(path => (new File(path).getName, Operations.miniDetect(path)))
-        .map {
-        case (fileName, encoding) => fileName + "|" + encoding.name()
-      }
-        .foreach {
-        case result if opts.output.get.isEmpty => println(result)
-        case result if opts.output.get.isDefined =>
-          val w = new BufferedWriter(new FileWriter(opts.output.get.get, true))
-          w.write(result)
-          w.newLine()
-          w.close()
-        case _ => throw new IllegalArgumentException("Wrong argument provided")
-      })
+  opts
+    .encoding
+    .get
+    .map(listOfFiles => listOfFiles.foreach(Operations.miniDetect))
 
   val convert8859_15 = opts.convert8859_15.get
   convert8859_15 match {

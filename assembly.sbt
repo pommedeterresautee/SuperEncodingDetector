@@ -5,6 +5,6 @@ assemblySettings
 
 jarName in assembly := "SuperFileEncoding.jar"
 
-mainClass in assembly := Some("com.taj.unicode_detector.Main")
+mainClass in assembly := Some("com.taj.unicode_detector.CommandLine.Main")
 
 

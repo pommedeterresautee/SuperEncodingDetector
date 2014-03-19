@@ -1,17 +1,12 @@
 package com.taj.unicode_detector.Encoding.FullCheck
 
-import com.taj.unicode_detector.ActorLife.StartRegistration
-import com.taj.unicode_detector.Encoding.MessageResult.StartFileAnalyze
-import akka.actor.Actor.Receive
 import com.taj.unicode_detector.Encoding.BOM.BOMFileEncoding
 import akka.actor._
 import com.typesafe.scalalogging.slf4j.Logging
 import java.io.File
 import com.taj.unicode_detector.ParamAkka
-import com.taj.unicode_detector.Encoding.FullCheck.FileFullAnalyzeStateMessages.Result
-import akka.routing.Broadcast
 import com.taj.unicode_detector.Encoding.MessageResult.ResultOfTestBOM
-import com.taj.unicode_detector.ActorLife.RegisterRootee
+import com.taj.unicode_detector.ActorLife.RegisterMe
 import com.taj.unicode_detector.ActorLife.StartRegistration
 import scala.Some
 import akka.routing.Broadcast
@@ -23,8 +18,8 @@ import com.taj.unicode_detector.Encoding.MessageResult.StartFileAnalyze
  * Created by geantvert on 19/03/14.
  */
 object FileAnalyzer {
-  def apply(encodingTested: BOMFileEncoding, path: String, testToOperate: Array[Byte] => Int, name: String)(implicit system: ActorSystem): ActorRef = {
-    system.actorOf(Props(new FileAnalyzer(encodingTested, path, testToOperate)), name = name)
+  def apply(encodingTested: BOMFileEncoding, path: String, testToOperate: Array[Byte] => Int, name: String)(implicit context: ActorContext): ActorRef = {
+    context.system.actorOf(Props(new FileAnalyzer(encodingTested, path, testToOperate)), name = name)
   }
 }
 
@@ -78,7 +73,7 @@ class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate:
 
   def receive = {
     case StartRegistration(register) =>
-      register ! RegisterRootee(routerBlockAnalyzerActor)
+      register ! RegisterMe(routerBlockAnalyzerActor)
     case StartFileAnalyze() =>
       startAnalyzeTime = System.currentTimeMillis
       masterSender = Some(sender())

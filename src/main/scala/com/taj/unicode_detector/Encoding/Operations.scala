@@ -52,7 +52,7 @@ object Operations extends Logging {
     implicit val timeout = Timeout(2, TimeUnit.MINUTES)
 
     val system: ActorSystem = ActorSystem("ActorSystemFileIdentification")
-    val detector = system.actorOf(Props(new Detection(file)), name = "Detector")
+    val detector = system.actorOf(Props(new FullDetection(file)), name = "Detector")
     Await.result(detector ? StartFileAnalyze(), timeout.duration) match {
       case ResultOfTestBOM(Some(detectedEncoding)) => detectedEncoding.charsetUsed
       case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during the check")

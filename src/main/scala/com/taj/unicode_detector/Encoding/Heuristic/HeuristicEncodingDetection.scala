@@ -32,17 +32,21 @@ package com.taj.unicode_detector.Encoding.Heuristic
 import java.nio.charset.Charset
 import com.ibm.icu.text.CharsetDetector
 import java.io.{BufferedInputStream, FileInputStream}
-import akka.actor.{Props, ActorSystem, ActorRef, Actor}
-import com.taj.unicode_detector.ActorLife.{RegisterRootee, StartRegistration}
-import com.taj.unicode_detector.Encoding.MessageResult
-import MessageResult.{ResultOfTestBOM, StartFileAnalyze}
+import akka.actor._
+import com.taj.unicode_detector.ActorLife.RegisterMe
+import MessageResult.ResultOfTestBOM
 import com.typesafe.scalalogging.slf4j.Logging
 import com.taj.unicode_detector.Encoding.BOM.BOMFileEncoding
+import com.taj.unicode_detector.ActorLife.RegisterMe
+import com.taj.unicode_detector.Encoding.MessageResult.ResultOfTestBOM
+import com.taj.unicode_detector.ActorLife.StartRegistration
+import com.taj.unicode_detector.Encoding.MessageResult.StartFileAnalyze
+import scala.Some
 
 
 object HeuristicEncodingDetection extends Logging {
-  def apply(path: String)(implicit system: ActorSystem): ActorRef = {
-    system.actorOf(Props(new HeuristicEncodingDetection(path)), "HeuristicEncodingDetection")
+  def apply(path: String)(implicit context: ActorContext): ActorRef = {
+    context.system.actorOf(Props(new HeuristicEncodingDetection(path)), "HeuristicEncodingDetection")
   }
 
   /**
@@ -69,7 +73,7 @@ object HeuristicEncodingDetection extends Logging {
 class HeuristicEncodingDetection(path: String) extends Actor {
   def receive = {
     case StartRegistration(register) =>
-      register ! RegisterRootee(self)
+      register ! RegisterMe(self)
     case StartFileAnalyze() =>
       val encoding = HeuristicEncodingDetection.detectEncoding(path)
       val result: ResultOfTestBOM = ResultOfTestBOM(Some(BOMFileEncoding(encoding)))

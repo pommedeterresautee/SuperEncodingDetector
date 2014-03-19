@@ -31,7 +31,7 @@ package com.taj.unicode_detector
 
 import akka.actor._
 import com.typesafe.scalalogging.slf4j.Logging
-import com.taj.unicode_detector.ActorLife.RegisterRootee
+import com.taj.unicode_detector.ActorLife.RegisterMe
 
 import akka.actor.Terminated
 import com.taj.unicode_detector.ActorLife.KillAkka
@@ -41,7 +41,7 @@ object ActorLife {
 
   case class StartRegistration(registrer: ActorRef)
 
-  case class RegisterRootee(parent: ActorRef)
+  case class RegisterMe(parent: ActorRef)
 
   case class KillAkka()
 
@@ -51,8 +51,8 @@ object ActorLife {
  * Watch actor and kill them when the operation is finished.
  */
 object Reaper {
-  def apply(name: String)(implicit system: ActorSystem): ActorRef = {
-    system.actorOf(Props(new Reaper()), name)
+  def apply(name: String)(implicit context: ActorContext): ActorRef = {
+    context.system.actorOf(Props(new Reaper()), name)
   }
 }
 
@@ -64,7 +64,7 @@ class Reaper() extends Actor with Logging {
   var orderToKillAkka = false
 
   def receive = {
-    case RegisterRootee(parent) =>
+    case RegisterMe(parent) =>
       logger.debug(s"*** Register rootee ${parent.path} ***")
       context.watch(parent)
       watched += parent
