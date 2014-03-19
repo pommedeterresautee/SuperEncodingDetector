@@ -1,4 +1,4 @@
-name := "super_ascii_detector"
+name := "super_encoding_detector"
 
 version := "1.0"
 

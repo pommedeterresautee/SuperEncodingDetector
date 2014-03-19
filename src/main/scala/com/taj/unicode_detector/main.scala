@@ -30,7 +30,6 @@
 package com.taj.unicode_detector
 
 import java.io.{BufferedWriter, FileWriter, File}
-import org.rogach.scallop._
 import org.slf4j.impl.SimpleLogger
 import com.typesafe.scalalogging.slf4j.Logging
 
@@ -44,51 +43,7 @@ object main extends App with Logging {
   val arg = Array("--encoding", BIG_FILE, SECOND_FILE)
   val help = Array("--help")
 
-  val opts = new ScallopConf(arg) {
-    banner( """
-              | ____                          _____                     _                 ____       _            _
-              |/ ___| _   _ _ __   ___ _ __  | ____|_ __   ___ ___   __| (_)_ __   __ _  |  _ \  ___| |_ ___  ___| |_ ___  _ __
-              |\___ \| | | |  _ \ / _ \ '__| |  _| | '_ \ / __/ _ \ / _` | | '_ \ / _` | | | | |/ _ \ __/ _ \/ __| __/ _ \| '__|
-              | ___) | |_| | |_) |  __/ |    | |___| | | | (_| (_) | (_| | | | | | (_| | | |_| |  __/ ||  __/ (__| || (_) | |
-              ||____/ \____| .__/ \___|_|    |_____|_| |_|\___\___/ \____|_|_| |_|\__, | |____/ \___|\__\___|\___|\__\___/|_|
-              |            |_|                                                    |___/
-              |
-              		""".stripMargin + s"""
-SuperEncodingDetector will help you to manage text files in different encoding format.
-This application is good for working with the different Unicode version and ASCII character set but not to manage national specific code pages.
-
-* Encoding detection is based on the Byte Order Mark (BOM) of the file if it is available (UTF-8, UTF-16 BE/LE and the two versions of  UTF-32 BE/LE).
-* Encoding detection is based on a full scan of the text file if no BOM is available (UTF-8 and ASCII).
-* Conversion from Unicode to ASCII is done by replacing special characters by their ASCII equivalents if possible.
-* Merge different files encoded in a format including a BOM. The final file will include only one BOM.
-
-Example: java -jar SuperEncodingDetector.jar --input .${File.separator}path1${File.separator}file1.txt .${File.separator}path2${File.separator}file2.txt .${File.separator}path3${File.separator}*.txt --detection
-
-For usage see below:
-           """)
-    val filesExist: List[String] => Boolean = _.forall {
-      new File(_).exists()
-    }
-
-    val encoding = opt[List[String]]("encoding", descr = "Print the detected encoding of each file provided.", validate = filesExist)
-    //val removeBOM = opt[String]("removeBOM", descr = "Remove the Byte Order Mark from a file. Use output option to provide the destination folder.", validate = new File(_).exists())
-    val convert8859_15 = opt[List[String]]("ISO8859convert", descr = "Convert a file from any format to ISO 8859-15. Use with outputFolder.", validate = filesExist)
-    val convertUTF8 = opt[List[String]]("UTF8convert", descr = "Convert a file from any format to UTF-8. Use with outputFolder.", validate = filesExist)
-    //val convertASCII = opt[List[String]]("ASCIIconvert", descr = "Convert a file from Unicode encoding to ASCII. Use with outputFolder.", validate = filesExist)
-    val output = opt[String]("output", descr = "Path to the file where to save the result.", validate = !new File(_).exists())
-    val outputFolder = opt[String]("outputFolder", descr = "Path to the folder where to save the conversion results.", validate = new File(_).isDirectory)
-    val merge = opt[List[String]]("merge", descr = "Merge the files provided. Use output option to provide the destination folder.", validate = filesExist)
-    val debug = toggle("debug", descrYes = "Display lots of debug information during the process.", descrNo = "Display minimum during the process (same as not using this argument).", default = Some(false), prefix = "no-")
-    val help = opt[Boolean]("help", descr = "Show this message.")
-    // val version = opt[Boolean]("version", noshort = true, descr = "Print program version.")
-    dependsOnAll(merge, List(outputFolder))
-    dependsOnAll(convertUTF8, List(outputFolder))
-    dependsOnAll(convert8859_15, List(outputFolder))
-    //    dependsOnAll(convertASCII, List(outputFolder))
-
-    conflicts(merge, List(encoding, help /*, version*/))
-    conflicts(encoding, List(merge, help /*, version*/))
-  }
+  val opts = new CommandLineParser(args)
 
   System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, if (opts.debug.get.getOrElse(false)) "debug" else "info")
 
@@ -97,9 +52,9 @@ For usage see below:
 
   opts.encoding.get
     .map(
-      _.map(path => (path, Operations.miniDetect(path)))
+      _.map(path => (new File(path).getName, Operations.miniDetect(path)))
         .map {
-        case (file, encoding) => file + ";" + encoding.name()
+        case (fileName, encoding) => fileName + "|" + encoding.name()
       }
         .foreach {
         case result if opts.output.get.isEmpty => println(result)
