@@ -31,9 +31,12 @@ package com.taj.unicode_detector.test.tests
 
 import java.io.File
 import com.taj.unicode_detector.test.FirstListFilesToTest._
-import com.taj.unicode_detector.{BOMEncoding, Operations, ParamAkka}
+import com.taj.unicode_detector.ParamAkka
 import com.taj.unicode_detector.test.TestFile
-import com.taj.unicode_detector.HeuristicEncodingDetection._
+import com.taj.unicode_detector.Encoding.Heuristic.HeuristicEncodingDetection
+import HeuristicEncodingDetection._
+import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
+import com.taj.unicode_detector.Encoding.Operations
 
 
 object TestEncodingWithWrongParameter extends TestTrait {

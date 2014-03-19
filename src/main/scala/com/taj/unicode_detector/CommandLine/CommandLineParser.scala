@@ -27,7 +27,7 @@
  * TAJ - Société d'avocats.
  */
 
-package com.taj.unicode_detector
+package com.taj.unicode_detector.CommandLine
 
 import java.io.File
 import org.rogach.scallop.ScallopConf

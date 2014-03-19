@@ -27,7 +27,7 @@
  * TAJ - Société d'avocats.
  */
 
-package com.taj.unicode_detector
+package com.taj.unicode_detector.Encoding
 
 import java.io.{File, FileOutputStream, FileInputStream}
 import java.nio.file.{Paths, Files}
@@ -37,108 +37,11 @@ import akka.util.Timeout
 import scala.concurrent.Await
 import akka.pattern.ask
 import java.util.concurrent.TimeUnit
-import com.taj.unicode_detector.ActorLife.StartRegistration
 import scala.Some
-import com.taj.unicode_detector.ActorLife.KillAkka
-import com.taj.unicode_detector.TestResult.{ResultOfTestBOM, StartFileAnalyze}
+import MessageResult.{ResultOfTestBOM, StartFileAnalyze}
 import com.typesafe.scalalogging.slf4j.Logging
-import com.taj.unicode_detector.HeuristicEncodingDetection._
+import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
 
-
-object TestResult {
-
-  case class StartFileAnalyze()
-
-  case class ResultOfTestBOM(result: Option[BOMFileEncoding])
-
-}
-
-class Detection(filePath: String) extends Actor {
-
-  import BOMEncoding._
-  import TestResult._
-
-  implicit val sys = context.system
-  var mActorUTF8: Option[ActorRef] = None
-  var mFile: Option[String] = None
-  val fileName = new File(filePath).getName
-  val reaper = Reaper(s"Reaper_$fileName")
-
-  var mOriginalSender: Option[ActorRef] = None
-
-  def bomResultReceive: Receive = {
-    case ResultOfTestBOM(Some(detectedEncoding)) =>
-      mOriginalSender.get ! ResultOfTestBOM(Some(detectedEncoding))
-      reaper ! KillAkka()
-    case ResultOfTestBOM(None) =>
-      context.become(ASCIIResultReceive)
-      val mActorASCIIActorRef = FileAnalyzer(ASCII, mFile.get, ParamAkka.checkASCII, name = "ASCIIFileAnalyzer")
-      mActorASCIIActorRef ! StartRegistration(reaper)
-      mActorASCIIActorRef ! StartFileAnalyze()
-  }
-
-  def ASCIIResultReceive: Receive = {
-    case ResultOfTestBOM(Some(ASCII)) =>
-    mOriginalSender.get ! ResultOfTestBOM(Some(ASCII))
-      reaper ! KillAkka()
-    case ResultOfTestBOM(None) =>
-      context.become(UTF8ResultReceive)
-      val mActorUTF8ActorRef = FileAnalyzer(UTF8NoBOM, mFile.get, ParamAkka.checkUTF8, name = "UTF8FileAnalyzer")
-      mActorUTF8ActorRef ! StartRegistration(reaper)
-      mActorUTF8ActorRef ! StartFileAnalyze()
-  }
-
-  def UTF8ResultReceive: Receive = {
-    case ResultOfTestBOM(Some(UTF8NoBOM)) =>
-    mOriginalSender.get ! ResultOfTestBOM(Some(UTF8NoBOM))
-      reaper ! KillAkka()
-    case ResultOfTestBOM(None) =>
-      mOriginalSender.get ! ResultOfTestBOM(Some(BOMFileEncoding(detectEncoding(filePath))))
-      reaper ! KillAkka()
-  }
-
-  def receive = {
-    case StartFileAnalyze() =>
-      context.become(bomResultReceive)
-      mFile = Some(filePath)
-      mOriginalSender = Some(sender())
-      val BOMActor = BOMBasedDetectionActor(filePath)
-      BOMActor ! StartFileAnalyze()
-  }
-}
-
-
-object MiniDetection extends Logging {
-  def apply(path: String)(implicit system: ActorSystem): ActorRef = {
-    system.actorOf(Props(new MiniDetection(path)), "MiniDetection")
-  }
-}
-
-/**
- * First try to detect on the BOM then on the content.
- * @param file path to the file to test.
- */
-class MiniDetection(file: String) extends Actor {
-
-  implicit val sys = context.system
-  var mOriginalSender: Option[ActorRef] = None
-
-  def BOMDetectionResultReceive: Receive = {
-    case ResultOfTestBOM(Some(detectedEncoding)) =>
-      mOriginalSender.get ! detectedEncoding.charsetUsed
-    case ResultOfTestBOM(None) =>
-      val HeuristicActor = HeuristicEncodingDetection(file)
-      HeuristicActor ! StartFileAnalyze()
-  }
-
-  def receive = {
-    case StartFileAnalyze() =>
-      context.become(BOMDetectionResultReceive)
-      mOriginalSender = Some(sender())
-      val BOMActor = BOMBasedDetectionActor(file)
-      BOMActor ! StartFileAnalyze()
-  }
-}
 
 /**
  * Main class to detect a file encoding based on its BOM.

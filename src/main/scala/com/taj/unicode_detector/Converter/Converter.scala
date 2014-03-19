@@ -27,14 +27,17 @@
  * TAJ - Société d'avocats.
  */
 
-package com.taj.unicode_detector
+package com.taj.unicode_detector.Converter
 
 import java.text.Normalizer
 import java.nio.charset.{StandardCharsets, Charset}
 import scala.io.{BufferedSource, Source}
 import java.io._
-import com.taj.unicode_detector.HeuristicEncodingDetection._
+import com.taj.unicode_detector.Encoding.Heuristic.HeuristicEncodingDetection
+import HeuristicEncodingDetection._
 import scala.Some
+import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
+import com.taj.unicode_detector.Encoding.Operations
 
 /**
  * Convert text files to a specific format.

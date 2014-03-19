@@ -1,8 +1,8 @@
 package com.taj.unicode_detector.test.tests
 
-import com.taj.unicode_detector.Operations
 import com.taj.unicode_detector.test.FirstListFilesToTest._
 import com.taj.unicode_detector.test.TestFile
+import com.taj.unicode_detector.Encoding.Operations
 
 
 object DifferentBOM extends TestTrait {

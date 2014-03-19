@@ -27,15 +27,17 @@
  * TAJ - Société d'avocats.
  */
 
-package com.taj.unicode_detector
+package com.taj.unicode_detector.Encoding.Heuristic
 
 import java.nio.charset.Charset
 import com.ibm.icu.text.CharsetDetector
 import java.io.{BufferedInputStream, FileInputStream}
 import akka.actor.{Props, ActorSystem, ActorRef, Actor}
 import com.taj.unicode_detector.ActorLife.{RegisterRootee, StartRegistration}
-import com.taj.unicode_detector.TestResult.{ResultOfTestBOM, StartFileAnalyze}
+import com.taj.unicode_detector.Encoding.MessageResult
+import MessageResult.{ResultOfTestBOM, StartFileAnalyze}
 import com.typesafe.scalalogging.slf4j.Logging
+import com.taj.unicode_detector.Encoding.BOM.BOMFileEncoding
 
 
 object HeuristicEncodingDetection extends Logging {

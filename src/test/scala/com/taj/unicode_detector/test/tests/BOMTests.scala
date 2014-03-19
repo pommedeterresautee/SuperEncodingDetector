@@ -31,9 +31,10 @@ package com.taj.unicode_detector.test.tests
 
 import com.taj.unicode_detector.test.FirstListFilesToTest._
 import java.io.{RandomAccessFile, FileInputStream, File}
-import com.taj.unicode_detector.{BOMEncoding, Operations}
 import com.taj.unicode_detector.test.TestFile
 import org.apache.commons.codec.digest.DigestUtils
+import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
+import com.taj.unicode_detector.Encoding.Operations
 
 
 object BOMTests extends TestTrait {

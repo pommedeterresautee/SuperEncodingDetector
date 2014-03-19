@@ -1,8 +1,8 @@
 package com.taj.unicode_detector.test
 
-import com.taj.unicode_detector.{BOMEncoding, BOMFileEncoding}
 import java.io.File
 import java.nio.charset.Charset
+import com.taj.unicode_detector.Encoding.BOM.{BOMEncoding, BOMFileEncoding}
 
 
 /**

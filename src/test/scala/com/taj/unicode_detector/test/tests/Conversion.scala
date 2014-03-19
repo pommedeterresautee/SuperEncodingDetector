@@ -30,11 +30,14 @@
 package com.taj.unicode_detector.test.tests
 
 import com.taj.unicode_detector.test.FirstListFilesToTest._
-import com.taj.unicode_detector.{BOMEncoding, Operations, Converter}
 import java.io.File
 import com.taj.unicode_detector.test.TestFile
 import java.nio.charset.Charset
-import com.taj.unicode_detector.HeuristicEncodingDetection._
+import com.taj.unicode_detector.Encoding.Heuristic.HeuristicEncodingDetection
+import HeuristicEncodingDetection._
+import com.taj.unicode_detector.Converter.Converter
+import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
+import com.taj.unicode_detector.Encoding.Operations
 
 object Conversion extends TestTrait {
   val test: TestFile => Unit = {
