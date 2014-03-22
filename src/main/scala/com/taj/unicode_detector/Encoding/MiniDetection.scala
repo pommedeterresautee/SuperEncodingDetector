@@ -7,6 +7,8 @@ import com.typesafe.scalalogging.slf4j.Logging
 import com.taj.unicode_detector.Encoding.MessageResult.ResultOfTestBOM
 import com.taj.unicode_detector.Encoding.MessageResult.StartFileAnalyze
 import scala.Some
+import com.taj.unicode_detector.Reaper
+import com.taj.unicode_detector.ActorLife.{KillAkka, StartRegistration}
 
 object MiniDetection extends Logging {
   def apply(path: String)(implicit system: ActorSystem): ActorRef = {
@@ -21,14 +23,17 @@ object MiniDetection extends Logging {
 class MiniDetection(file: String) extends Actor {
 
   var mOriginalSender: Option[ActorRef] = None
-  val actorResult = EncodingResult(file, None)
+  val actorResult = EncodingResultActor(file, None)
+  val reaper = Reaper("MiniDetectionReaper")
 
   def BOMDetectionResultReceive: Receive = {
     case ResultOfTestBOM(Some(detectedEncoding)) =>
       mOriginalSender.get ! detectedEncoding.charsetUsed
       actorResult ! detectedEncoding.charsetUsed
+      reaper ! KillAkka()
     case ResultOfTestBOM(None) =>
       val HeuristicActor = HeuristicEncodingDetection(file)
+      HeuristicActor ! StartRegistration(reaper)
       HeuristicActor ! StartFileAnalyze()
   }
 
@@ -37,6 +42,8 @@ class MiniDetection(file: String) extends Actor {
       context.become(BOMDetectionResultReceive)
       mOriginalSender = Some(sender())
       val BOMActor = BOMBasedDetectionActor(file)
+      actorResult ! StartRegistration(reaper)
+      BOMActor ! StartRegistration(reaper)
       BOMActor ! StartFileAnalyze()
   }
 

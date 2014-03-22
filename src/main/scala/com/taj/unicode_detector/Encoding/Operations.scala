@@ -73,7 +73,6 @@ object Operations extends Logging {
       case Some(charset: Charset) => charset
       case u => throw new IllegalArgumentException(s"Failed to retrieve result from Actor: $u.")
     }
-    system.shutdown()
     result
   }
 

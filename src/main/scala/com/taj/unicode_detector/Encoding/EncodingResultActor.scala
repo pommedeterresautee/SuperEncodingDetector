@@ -5,19 +5,22 @@ import java.nio.charset.Charset
 import java.io.{FileWriter, BufferedWriter, File}
 import com.typesafe.scalalogging.slf4j.Logging
 import scala.Some
+import com.taj.unicode_detector.ActorLife.{RegisterMe, StartRegistration}
 
 
-object EncodingResult extends Logging {
+object EncodingResultActor extends Logging {
   def apply(path: String, output: Option[String])(implicit context: ActorContext): ActorRef = {
-    context.system.actorOf(Props(new EncodingResult(path, output)), "EncodingResult")
+    context.system.actorOf(Props(new EncodingResultActor(path, output)), "EncodingResult")
   }
 }
 
 /**
  * Manage the result of an encoding detection result
  */
-class EncodingResult(path: String, output: Option[String]) extends Actor with Logging {
+class EncodingResultActor(path: String, output: Option[String]) extends Actor with Logging {
   override def receive: Receive = {
+    case StartRegistration(register) =>
+      register ! RegisterMe(self)
     case charset: Charset =>
       val result = s"${new File(path).getName}|$charset"
       output match {
@@ -28,6 +31,7 @@ class EncodingResult(path: String, output: Option[String]) extends Actor with Lo
           w.newLine()
           w.close()
       }
+      context.stop(self)
     case _ => throw new IllegalArgumentException("Wrong argument provided")
   }
 }

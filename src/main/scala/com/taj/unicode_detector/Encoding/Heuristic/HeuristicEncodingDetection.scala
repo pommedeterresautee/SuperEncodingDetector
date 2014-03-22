@@ -76,6 +76,7 @@ class HeuristicEncodingDetection(path: String) extends Actor {
       val encoding = HeuristicEncodingDetection.detectEncoding(path)
       val result: ResultOfTestBOM = ResultOfTestBOM(Some(BOMFileEncoding(encoding)))
       sender ! result
+      context.stop(self)
     case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
   }
 }

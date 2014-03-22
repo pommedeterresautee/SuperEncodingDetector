@@ -39,7 +39,7 @@ import scala.collection.mutable
 
 object ActorLife {
 
-  case class StartRegistration(registrer: ActorRef)
+  case class StartRegistration(register: ActorRef)
 
   case class RegisterMe(parent: ActorRef)
 
@@ -57,7 +57,9 @@ object Reaper {
 }
 
 /**
- * Watch actor and kill them when the operation is finished.
+ * <p>Watch actor and kill them when the operation is finished.</p>
+ * <p>Need to register your actor with the reaper by sending a {@code RegisterMe()} message.</p>
+ * <p>When ready to be stopped, send {@code KillAkka()} to stop the system.</p>
  */
 class Reaper() extends Actor with Logging {
   val watched: mutable.Set[ActorRef] = mutable.Set()
@@ -65,11 +67,11 @@ class Reaper() extends Actor with Logging {
 
   def receive = {
     case RegisterMe(parent) =>
-      logger.debug(s"*** Register rootee ${parent.path} ***")
+      logger.debug(s"*** Register actor ${parent.path} ***")
       context.watch(parent)
       watched += parent
     case Terminated(ref) =>
-      logger.debug(s"*** Has been removed ${ref.path} ***")
+      logger.debug(s"*** Actor ${ref.path} has been removed ***")
       watched -= ref
       byeBye()
     case KillAkka() => orderToKillAkka = true
@@ -78,12 +80,12 @@ class Reaper() extends Actor with Logging {
   }
 
   /**
-   * Stop Akka system if all works are finished
+   * Stop Akka system if every works are finished.
    */
   def byeBye() {
     if (orderToKillAkka && watched.isEmpty) {
       logger.debug("*** Stop the Akka system ***")
       context.system.shutdown()
-    }
+    } else logger.debug(s"*** Still ${watched.size} actors watched ***")
   }
 }
