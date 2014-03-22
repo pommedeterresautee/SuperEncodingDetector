@@ -33,8 +33,6 @@ import java.nio.charset.Charset
 import com.ibm.icu.text.CharsetDetector
 import java.io.{BufferedInputStream, FileInputStream}
 import akka.actor._
-import com.taj.unicode_detector.ActorLife.RegisterMe
-import MessageResult.ResultOfTestBOM
 import com.typesafe.scalalogging.slf4j.Logging
 import com.taj.unicode_detector.Encoding.BOM.BOMFileEncoding
 import com.taj.unicode_detector.ActorLife.RegisterMe

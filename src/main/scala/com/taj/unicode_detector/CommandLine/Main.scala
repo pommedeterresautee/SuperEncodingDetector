@@ -30,12 +30,8 @@
 package com.taj.unicode_detector.CommandLine
 
 import java.io.File
-import org.slf4j.impl.SimpleLogger
-import com.typesafe.scalalogging.slf4j.Logging
-import com.taj.unicode_detector.Converter
-import com.taj.unicode_detector.Encoding.Operations
 
-object Main extends App with Logging {
+object Main extends App {
 
   val testResourcesFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}"
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
@@ -45,39 +41,5 @@ object Main extends App with Logging {
   val arg = Array("--encoding", BIG_FILE, SECOND_FILE)
   val help = Array("--help")
 
-  val opts = new CommandLineParser(arg)
-
-  System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, if (opts.debug.get.getOrElse(false)) "debug" else "info")
-
-  // delete existing output file
-  opts.output.get.map(new File(_)).filter(_.exists()).foreach(_.delete())
-
-  opts
-    .encoding
-    .get
-    .map(listOfFiles => listOfFiles.foreach(Operations.miniDetect))
-
-  val convert8859_15 = opts.convert8859_15.get
-  convert8859_15 match {
-    case Some(list: List[String]) =>
-      list.foreach(file => Converter.Converter.convert2ISO_8859_15(file,
-        new File(opts.output.get.get, new File(file).getName).getAbsolutePath))
-    case None =>
-  }
-
-  val convertUTF8 = opts.convertUTF8.get
-  convertUTF8 match {
-    case Some(list: List[String]) =>
-      list.foreach(file => Converter.Converter.convert2UTF_8(file,
-        new File(opts.output.get.get, new File(file).getName).getAbsolutePath))
-    case None =>
-  }
-
-  val optionMerge = opts.merge.get
-  optionMerge match {
-    case Some(list) =>
-      if (!Operations.isSameEncoding(true, list: _*)) System.exit(1)
-      Operations.mergeFilesWithoutBom(opts.output.get.get, list: _*)
-    case None =>
-  }
+  CommandLineExecutor(arg)
 }

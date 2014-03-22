@@ -32,6 +32,11 @@ package com.taj.unicode_detector.CommandLine
 import java.io.File
 import org.rogach.scallop.ScallopConf
 
+
+object CommandLineParser {
+  def apply(args: Array[String]) = new CommandLineParser(args)
+}
+
 /**
  * Parse the argument provided on command line.
  * @param args arguments provided by the command line.
