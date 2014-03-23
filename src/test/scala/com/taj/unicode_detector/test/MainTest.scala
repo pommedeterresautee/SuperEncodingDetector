@@ -47,7 +47,7 @@ import akka.actor.ActorSystem
  */
 class MainTest extends Suites(BOMTests, Conversion, DifferentBOM, EncodingTest, TestEncodingWithWrongParameter) with TestKitBase with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll with Logging {
 
-  implicit lazy val system = ActorSystem()
+  implicit lazy val system = ActorSystem("AkkaTestSystem")
 
   /**
    * Clean all temp files before starting
