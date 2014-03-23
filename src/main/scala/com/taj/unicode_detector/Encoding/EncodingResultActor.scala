@@ -9,8 +9,8 @@ import com.taj.unicode_detector.ActorLife.{RegisterMe, StartRegistration}
 
 
 object EncodingResultActor extends Logging {
-  def apply(path: String, output: Option[String])(implicit context: ActorContext): ActorRef = {
-    context.system.actorOf(Props(new EncodingResultActor(path, output)), "EncodingResult")
+  def apply(path: String, output: Option[String])(implicit system: ActorSystem): ActorRef = {
+    system.actorOf(Props(new EncodingResultActor(path, output)), "EncodingResult")
   }
 }
 

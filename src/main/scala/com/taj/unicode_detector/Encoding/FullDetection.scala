@@ -22,7 +22,7 @@ class FullDetection(filePath: String) extends Actor {
   var mActorUTF8: Option[ActorRef] = None
   var mFile: Option[String] = None
   val fileName = new File(filePath).getName
-  val reaper = Reaper(s"Reaper_$fileName")
+  val reaper = Reaper(s"Reaper_$fileName")(context.system)
 
   var mOriginalSender: Option[ActorRef] = None
 

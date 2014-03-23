@@ -16,12 +16,13 @@ object CommandLineExecutor extends Logging {
     System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, if (opts.debug.get.getOrElse(false)) "debug" else "info")
 
     // delete existing output file
-    opts.output.get.map(new File(_)).filter(_.exists()).foreach(_.delete())
+    val optionOutput = opts.output.get
+    optionOutput.map(new File(_)).filter(_.exists()).foreach(_.delete())
 
     opts
       .encoding
       .get
-      .map(listOfFiles => listOfFiles.foreach(Operations.miniDetect))
+      .map(listOfFiles => listOfFiles.foreach(f => Operations.miniDetect(f, optionOutput)))
 
     val convert8859_15 = opts.convert8859_15.get
     convert8859_15 match {

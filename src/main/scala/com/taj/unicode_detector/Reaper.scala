@@ -51,8 +51,8 @@ object ActorLife {
  * Watch actor and kill them when the operation is finished.
  */
 object Reaper {
-  def apply(name: String)(implicit context: ActorContext): ActorRef = {
-    context.system.actorOf(Props(new Reaper()), name)
+  def apply(name: String)(implicit system: ActorSystem): ActorRef = {
+    system.actorOf(Props(new Reaper()), name)
   }
 }
 

@@ -68,7 +68,12 @@ object EncodingTest extends TestTrait {
         }
 
         s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on BOM analyze then heuristic analyze." in {
-          val detection = Operations.miniDetect(file.getAbsolutePath)
+
+          //          val probe = TestProbe()
+          //          val actor = MiniDetectionTest(file.getAbsolutePath, probe.ref)
+
+
+          val detection = Operations.miniDetect(file.getAbsolutePath, None)
           fileToTest.encoding.charsetUsed match {
             case charset if !charset.equals(BOMEncoding.ASCII.charsetUsed) => detection should equal(charset)
             case _ =>
