@@ -38,11 +38,14 @@ import com.taj.unicode_detector.Encoding.Heuristic.HeuristicEncodingDetection
 import HeuristicEncodingDetection._
 import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
 import com.taj.unicode_detector.Encoding.{MiniDetectionTest, Operations}
-import akka.testkit.TestKit
+import akka.testkit.{ImplicitSender, TestKitBase, TestProbe}
 import com.taj.unicode_detector.Encoding.MessageResult.StartFileAnalyze
+import akka.actor.ActorSystem
+import org.scalatest.BeforeAndAfterAll
 
 
-object EncodingTest extends TestTrait {
+object EncodingTest extends TestTrait with TestKitBase with ImplicitSender with BeforeAndAfterAll {
+  implicit lazy val system = ActorSystem("AkkaTestSystem2")
   val test: TestFile => Unit = {
     fileToTest =>
       val file = new File(encodedFileFolder, fileToTest.fileName)
@@ -69,22 +72,30 @@ object EncodingTest extends TestTrait {
           }
         }
 
-        s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on BOM analyze then heuristic analyze." in {
+        if (!fileToTest.encoding.charsetUsed.equals(BOMEncoding.ASCII.charsetUsed)) {
+          s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on BOM analyze then heuristic analyze." in {
 
-          //          val probe = TestProbe()
-          //          val actor = MiniDetectionTest(file.getAbsolutePath, probe.ref)
+            val probe = TestProbe()
+            val actor = MiniDetectionTest(file.getAbsolutePath, probe)
 
-          //          actor ! StartFileAnalyze()
+            actor ! StartFileAnalyze()
 
-          //          probe.expectMsg("hello world")
+            val message = probe.fishForMessage(hint = "Filter messages until getting the final result.") {
+              case tmpMessage if tmpMessage.isInstanceOf[Charset] => true
+              case _ => false
+            }
 
-
-          val detection = Operations.miniDetect(file.getAbsolutePath, None)
-          fileToTest.encoding.charsetUsed match {
-            case charset if !charset.equals(BOMEncoding.ASCII.charsetUsed) => detection should equal(charset)
-            case _ =>
+            message should be(fileToTest.encoding.charsetUsed)
           }
         }
       }
+  }
+
+  /**
+   * Stops all actors when tests are finished.
+   * Delete all temp files.
+   */
+  override def afterAll(): Unit = {
+    system.shutdown()
   }
 }

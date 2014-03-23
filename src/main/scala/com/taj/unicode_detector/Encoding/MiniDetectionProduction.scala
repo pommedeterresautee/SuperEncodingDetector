@@ -12,25 +12,26 @@ import com.taj.unicode_detector.ActorLife.{RegisterMe, KillAkka}
 import com.taj.unicode_detector.Encoding.MessageResult.StartFileAnalyze
 import scala.Some
 import java.io.File
+import akka.testkit.TestProbe
 
-object MiniDetection extends Logging {
-  def apply(path: String, output: Option[String])(implicit system: ActorSystem): ActorRef = new RealMiniDetectionTrait(path, output).actorRefResult
+object MiniDetectionProduction extends Logging {
+  def apply(path: String, output: Option[String])(implicit system: ActorSystem): ActorRef = new RealMiniDetectionProvider(path, output).actorRefResult
 }
 
 object MiniDetectionTest extends Logging {
-  def apply(path: String, testActor: ActorRef)(implicit system: ActorSystem): ActorRef = {
+  def apply(path: String, testActor: TestProbe)(implicit system: ActorSystem): ActorRef = {
     val fileName = new File(path).getName
-    val actor = new MiniDetectionActorComponent() with ResultMiniDetectionTrait {
+    val actor = new MiniDetectionActorComponent() with ResultMiniDetectionProvider {
       val reaper = Reaper(s"MiniDetectionReaper_$fileName")
       override val detector = system.actorOf(Props(new MiniDetection(path)), s"MiniDetection_$fileName")
-      override val actorRefResult: ActorRef = testActor
+      override val actorRefResult: ActorRef = testActor.ref
     }
     actor.detector
   }
 }
 
 trait MiniDetectionActorComponent {
-  self: ResultMiniDetectionTrait =>
+  self: ResultMiniDetectionProvider =>
 
   /**
    * First try to detect on the BOM then on the content.
@@ -61,17 +62,17 @@ trait MiniDetectionActorComponent {
 
 }
 
-class RealMiniDetectionTrait(path: String, output: Option[String])(implicit system: ActorSystem) extends MiniDetectionActorComponent with ResultMiniDetectionTrait {
+class RealMiniDetectionProvider(path: String, output: Option[String])(implicit system: ActorSystem) extends MiniDetectionActorComponent with ResultMiniDetectionProvider {
   override lazy val reaper = Reaper("MiniDetectionReaper")
   override lazy val detector = system.actorOf(Props(new MiniDetection(path)), "MiniDetection")
-  override lazy val actorRefResult: ActorRef = SendBackActor(detector, reaper)
-
+  override lazy val actorRefResult = SendBackActor(detector, reaper)
 }
 
-trait ResultMiniDetectionTrait {
-  val actorRefResult: ActorRef
+trait ResultMiniDetectionProvider {
+  //  self:Actor =>
   val detector: ActorRef
   val reaper: ActorRef
+  val actorRefResult: ActorRef
 }
 
 object SendBackActor {
@@ -79,7 +80,6 @@ object SendBackActor {
 }
 
 class SendBackActor(miniDetector: ActorRef, reaper: ActorRef) extends Actor {
-
   var originalSender: Option[ActorRef] = None
 
   override def receive: Actor.Receive = {

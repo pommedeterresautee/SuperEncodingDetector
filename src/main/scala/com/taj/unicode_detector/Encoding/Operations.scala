@@ -67,7 +67,7 @@ object Operations extends Logging {
   def miniDetect(file: String, output: Option[String]): Charset = {
     implicit val timeout = Timeout(2, TimeUnit.MINUTES)
     implicit val system: ActorSystem = ActorSystem("SystemMiniDetect")
-    val detector = MiniDetection(file, output)
+    val detector = MiniDetectionProduction(file, output)
     val result = Await.result(detector ? StartFileAnalyze(), timeout.duration) match {
       case charset: Charset => charset
       case Some(charset: Charset) => charset

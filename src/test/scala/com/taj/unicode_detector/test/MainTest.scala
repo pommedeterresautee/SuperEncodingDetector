@@ -31,7 +31,7 @@ package com.taj.unicode_detector.test
 
 import org.scalatest._
 import java.io.File
-import akka.testkit.{TestKitBase, ImplicitSender}
+import akka.testkit.ImplicitSender
 
 import com.typesafe.scalalogging.slf4j.{Logger, Logging}
 import org.slf4j.LoggerFactory
@@ -39,15 +39,12 @@ import FirstListFilesToTest._
 import SecondListFilesToTest._
 import ThirdListFilesToTestWrongParameters._
 import com.taj.unicode_detector.test.tests._
-import akka.actor.ActorSystem
 
 
 /**
  * Test the detection algorithm with each kind of file.
  */
-class MainTest extends Suites(BOMTests, Conversion, DifferentBOM, EncodingTest, TestEncodingWithWrongParameter) with TestKitBase with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll with Logging {
-
-  implicit lazy val system = ActorSystem("AkkaTestSystem")
+class MainTest extends Suites(BOMTests, Conversion, DifferentBOM, EncodingTest, TestEncodingWithWrongParameter) with TestTrait with BeforeAndAfterAll {
 
   /**
    * Clean all temp files before starting
@@ -59,13 +56,6 @@ class MainTest extends Suites(BOMTests, Conversion, DifferentBOM, EncodingTest, 
     tmpFolder.listFiles().length should be > 0
   }
 
-  /**
-   * Stops all actors when tests are finished.
-   * Delete all temp files.
-   */
-  override def afterAll(): Unit = {
-    system.shutdown()
-  }
 
   List(UTF8_with_BOM, UTF8_without_BOM, UTF16_BE, UTF16_LE, ASCII, Windows_1252, UTF8_with_BOM_bis, UTF8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis, UTF8_with_BOM_manually_cleaned, UTF16_BE_manually_cleaned, UTF16_LE_manually_cleaned)
     .foreach(EncodingTest.test)
