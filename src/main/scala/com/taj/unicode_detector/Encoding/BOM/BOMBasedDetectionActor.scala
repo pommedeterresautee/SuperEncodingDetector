@@ -28,7 +28,6 @@ class BOMBasedDetectionActor(file: String) extends Actor {
     case StartFileAnalyze() =>
       val result = detectBOM(file)
       sender ! ResultOfTestBOM(result)
-      context.stop(self)
     case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
   }
 }

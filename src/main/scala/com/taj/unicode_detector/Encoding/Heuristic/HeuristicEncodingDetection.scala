@@ -43,8 +43,8 @@ import scala.Some
 
 
 object HeuristicEncodingDetection extends Logging {
-  def apply(path: String)(implicit context: ActorContext): ActorRef = {
-    context.system.actorOf(Props(new HeuristicEncodingDetection(path)), "HeuristicEncodingDetection")
+  def apply(path: String)(implicit system: ActorSystem): ActorRef = {
+    system.actorOf(Props(new HeuristicEncodingDetection(path)), "HeuristicEncodingDetection")
   }
 
   /**
@@ -76,7 +76,6 @@ class HeuristicEncodingDetection(path: String) extends Actor {
       val encoding = HeuristicEncodingDetection.detectEncoding(path)
       val result: ResultOfTestBOM = ResultOfTestBOM(Some(BOMFileEncoding(encoding)))
       sender ! result
-      context.stop(self)
     case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
   }
 }

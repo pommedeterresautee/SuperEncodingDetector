@@ -37,7 +37,9 @@ import com.taj.unicode_detector.test.TestFile
 import com.taj.unicode_detector.Encoding.Heuristic.HeuristicEncodingDetection
 import HeuristicEncodingDetection._
 import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
-import com.taj.unicode_detector.Encoding.Operations
+import com.taj.unicode_detector.Encoding.{MiniDetectionTest, Operations}
+import akka.testkit.TestKit
+import com.taj.unicode_detector.Encoding.MessageResult.StartFileAnalyze
 
 
 object EncodingTest extends TestTrait {
@@ -71,6 +73,10 @@ object EncodingTest extends TestTrait {
 
           //          val probe = TestProbe()
           //          val actor = MiniDetectionTest(file.getAbsolutePath, probe.ref)
+
+          //          actor ! StartFileAnalyze()
+
+          //          probe.expectMsg("hello world")
 
 
           val detection = Operations.miniDetect(file.getAbsolutePath, None)
