@@ -38,7 +38,7 @@ object Main extends App {
 
   val BIG_FILE = encodedFileFolder + "UTF8_without_BOM_big_file.txt"
   val SECOND_FILE = encodedFileFolder + "UTF16_LE.txt"
-  val arg = Array("--encoding", BIG_FILE, SECOND_FILE)
+  val arg = Array("--encoding", BIG_FILE, SECOND_FILE, "--debug")
   val help = Array("--help")
 
   CommandLineExecutor(arg)

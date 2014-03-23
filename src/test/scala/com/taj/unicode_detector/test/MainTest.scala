@@ -31,9 +31,8 @@ package com.taj.unicode_detector.test
 
 import org.scalatest._
 import java.io.File
-import akka.testkit.ImplicitSender
 
-import com.typesafe.scalalogging.slf4j.{Logger, Logging}
+import com.typesafe.scalalogging.slf4j.Logger
 import org.slf4j.LoggerFactory
 import FirstListFilesToTest._
 import SecondListFilesToTest._
@@ -77,4 +76,11 @@ class MainTest extends Suites(BOMTests, Conversion, DifferentBOM, EncodingTest, 
 
   List(UTF16_BE_bis, UTF16_LE_bis)
     .foreach(Conversion.test2)
+
+  //TODO use this code to test command line
+  val stream = new java.io.ByteArrayOutputStream()
+  Console.withOut(stream) {
+    println("test message")
+  }
+  stream.toString should include("test message")
 }

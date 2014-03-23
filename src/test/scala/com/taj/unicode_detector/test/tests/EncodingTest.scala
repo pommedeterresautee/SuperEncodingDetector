@@ -73,7 +73,7 @@ object EncodingTest extends TestTrait with TestKitBase with ImplicitSender with 
         }
 
         if (!fileToTest.encoding.charsetUsed.equals(BOMEncoding.ASCII.charsetUsed)) {
-          s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on BOM analyze then heuristic analyze." in {
+          s"METHOD 1: should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on BOM analyze then heuristic analyze." in {
 
             val probe = TestProbe()
             val actor = MiniDetectionTest(file.getAbsolutePath, probe)
@@ -86,6 +86,14 @@ object EncodingTest extends TestTrait with TestKitBase with ImplicitSender with 
             }
 
             message should be(fileToTest.encoding.charsetUsed)
+          }
+
+          s"METHOD 2: should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on BOM analyze then heuristic analyze." in {
+            val detection = Operations.backMiniDetect(file.getAbsolutePath)
+            fileToTest.encoding.charsetUsed match {
+              case charset if !charset.equals(BOMEncoding.ASCII.charsetUsed) => detection should equal(charset)
+              case _ =>
+            }
           }
         }
       }

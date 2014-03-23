@@ -31,7 +31,7 @@ class EncodingResultActor(path: String, output: Option[String]) extends Actor wi
           w.newLine()
           w.close()
       }
-      context.stop(self)
+      self ! PoisonPill
     case _ => throw new IllegalArgumentException("Wrong argument provided")
   }
 }

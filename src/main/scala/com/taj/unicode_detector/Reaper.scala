@@ -74,7 +74,9 @@ class Reaper() extends Actor with Logging {
       logger.debug(s"*** Actor ${ref.path} has been removed ***")
       watched -= ref
       byeBye()
-    case KillAkka() => orderToKillAkka = true
+    case KillAkka() =>
+      logger.debug("*** Received KILLALL call ***")
+      orderToKillAkka = true
       byeBye()
     case a => throw new IllegalArgumentException(s"Sent bad argument to ${self.path}: ${a.toString}")
   }
@@ -86,6 +88,6 @@ class Reaper() extends Actor with Logging {
     if (orderToKillAkka && watched.isEmpty) {
       logger.debug("*** Stop the Akka system ***")
       context.system.shutdown()
-    } else logger.debug(s"*** Still ${watched.size} actors watched ***")
+    } else logger.debug(s"*** Still ${watched.size} actors watched ***\n${watched.toString()}")
   }
 }

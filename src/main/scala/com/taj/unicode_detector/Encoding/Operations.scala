@@ -64,10 +64,22 @@ object Operations extends Logging {
    * @param file path to the file to analyze.
    * @return the charset detected.
    */
+  def backMiniDetect(file: String): Charset = {
+    implicit val timeout = Timeout(2, TimeUnit.MINUTES)
+    implicit val system: ActorSystem = ActorSystem("SystemMiniDetect")
+    val detector = BackMiniDetectionProduction(file)
+    val result = Await.result(detector ? StartFileAnalyze(), timeout.duration) match {
+      case charset: Charset => charset
+      case Some(charset: Charset) => charset
+      case u => throw new IllegalArgumentException(s"Failed to retrieve result from Actor: $u.")
+    }
+    result
+  }
+
   def miniDetect(file: String, output: Option[String]): Charset = {
     implicit val timeout = Timeout(2, TimeUnit.MINUTES)
     implicit val system: ActorSystem = ActorSystem("SystemMiniDetect")
-    val detector = MiniDetectionProduction(file, output)
+    val detector = RealMiniDetectionProduction(file, output)
     val result = Await.result(detector ? StartFileAnalyze(), timeout.duration) match {
       case charset: Charset => charset
       case Some(charset: Charset) => charset
@@ -84,10 +96,10 @@ object Operations extends Logging {
    */
   def isSameEncoding(verbose: Boolean, paths: String*): Boolean = {
     if (paths.size < 2) throw new IllegalArgumentException(s"Not enough files to compare (${paths.size})")
-    val charset: Charset = miniDetect(paths.head, None)
+    val charset: Charset = backMiniDetect(paths.head)
     paths.tail.forall {
       path: String =>
-        val detectedEncoding: Charset = miniDetect(path, None)
+        val detectedEncoding: Charset = backMiniDetect(path)
         val same = charset.equals(detectedEncoding)
         if (!same) logger.debug(s"The first file [${paths.head}] is encoded as ${charset.name()} but the file [$path] is encoded as ${detectedEncoding.name}.")
         same
