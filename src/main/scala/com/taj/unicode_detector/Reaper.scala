@@ -51,19 +51,18 @@ object ActorLife {
  * Watch actor and kill them when the operation is finished.
  */
 object Reaper {
-  def apply(name: String)(implicit system: ActorSystem): ActorRef = {
-    system.actorOf(Props(new Reaper()), name)
+  def apply(name: String, autoStopWhenWorkerFinished: Boolean = false)(implicit system: ActorSystem): ActorRef = {
+    system.actorOf(Props(new Reaper(autoStopWhenWorkerFinished)), name)
   }
 }
 
 /**
  * <p>Watch actor and kill them when the operation is finished.</p>
  * <p>Need to register your actor with the reaper by sending a {@code RegisterMe()} message.</p>
- * <p>When ready to be stopped, send {@code KillAkka()} to stop the system.</p>
+ * @param orderToKillAkka if true, when ready to be stopped, send KillAkka() to stop the system.
  */
-class Reaper() extends Actor with Logging {
+class Reaper(var orderToKillAkka: Boolean) extends Actor with Logging {
   val watched: mutable.Set[ActorRef] = mutable.Set()
-  var orderToKillAkka = false
 
   def receive = {
     case RegisterMe(parent) =>
