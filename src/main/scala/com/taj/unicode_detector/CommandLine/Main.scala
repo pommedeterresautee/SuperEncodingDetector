@@ -41,5 +41,5 @@ object Main extends App {
   val arg = Array("--encoding", BIG_FILE, SECOND_FILE)
   val help = Array("--help")
 
-  CommandLineExecutor(arg)
+  CommandLineExecutor(args)
 }

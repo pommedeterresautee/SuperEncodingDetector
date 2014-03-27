@@ -64,7 +64,7 @@ Example: java -jar SuperEncodingDetector.jar --input .${File.separator}path1${Fi
 For usage see below:
            """)
   val filesExist: List[String] => Boolean = _.forall {
-    new File(_).exists()
+    new File(_).isFile
   }
 
   val encoding = opt[List[String]]("encoding", descr = "Print the detected encoding of each file provided.", validate = filesExist)
