@@ -29,14 +29,12 @@
 
 package com.taj.unicode_detector.Encoding.FullCheck
 
-
 import akka.actor._
 import scala.Option
 
-
 private object FileFullAnalyzeStateMessages {
 
-  case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] => Int)
+  case class AnalyzeBlock(filePath: String, startRead: Long, length: Long, bufferSize: Int, testToOperate: Array[Byte] ⇒ Int)
 
   case class Result(actor: ActorRef, pathOfTheFileAnalyzed: String, nonMatchingCharPositionInFile: Option[Long])
 

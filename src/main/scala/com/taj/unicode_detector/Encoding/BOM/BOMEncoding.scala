@@ -1,6 +1,6 @@
 package com.taj.unicode_detector.Encoding.BOM
 
-import java.nio.charset.{StandardCharsets, Charset}
+import java.nio.charset.{ StandardCharsets, Charset }
 import java.io.FileInputStream
 
 /**
@@ -42,14 +42,14 @@ object BOMEncoding {
     in.close() // To make the file deletable after processing!
 
     bytes match {
-      case UTF32BE.BOM | UTF32BE.BOM_XML => Some(UTF32BE)
-      case UTF32LE.BOM | UTF32LE.BOM_XML => Some(UTF32LE)
-      case UTF32LEUnusual.BOM | UTF32LEUnusual.BOM_XML => Some(UTF32LEUnusual)
-      case UTF32BEUnusual.BOM | UTF32BEUnusual.BOM_XML => Some(UTF32BEUnusual)
-      case UTF_16_BE.BOM :+ _ :+ _ | UTF_16_BE.BOM_XML => Some(UTF_16_BE)
-      case UTF_16_LE.BOM :+ _ :+ _ | UTF_16_LE.BOM_XML => Some(UTF_16_LE)
-      case UTF8.BOM :+ _ | UTF8.BOM_XML => Some(UTF8)
-      case _ => None
+      case UTF32BE.BOM | UTF32BE.BOM_XML               ⇒ Some(UTF32BE)
+      case UTF32LE.BOM | UTF32LE.BOM_XML               ⇒ Some(UTF32LE)
+      case UTF32LEUnusual.BOM | UTF32LEUnusual.BOM_XML ⇒ Some(UTF32LEUnusual)
+      case UTF32BEUnusual.BOM | UTF32BEUnusual.BOM_XML ⇒ Some(UTF32BEUnusual)
+      case UTF_16_BE.BOM :+ _ :+ _ | UTF_16_BE.BOM_XML ⇒ Some(UTF_16_BE)
+      case UTF_16_LE.BOM :+ _ :+ _ | UTF_16_LE.BOM_XML ⇒ Some(UTF_16_LE)
+      case UTF8.BOM :+ _ | UTF8.BOM_XML                ⇒ Some(UTF8)
+      case _                                           ⇒ None
     }
   }
 }

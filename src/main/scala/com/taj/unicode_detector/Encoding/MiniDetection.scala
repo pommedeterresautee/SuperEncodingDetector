@@ -40,7 +40,6 @@ import com.taj.unicode_detector.ActorLife.RegisterMe
 import com.taj.unicode_detector.Encoding.MessageResult.StartFileAnalyze
 import scala.Some
 import java.io.File
-import akka.testkit.TestProbe
 
 trait ResultMiniDetectionProvider {
   val detector: ActorRef
@@ -69,24 +68,24 @@ class RealMiniDetectionProvider(path: String, output: Option[String])(implicit s
 }
 
 object MiniDetectionTest extends Logging {
-  def apply(path: String, testActor: TestProbe)(implicit system: ActorSystem): ActorRef = {
+  def apply(path: String, testActor: ActorRef)(implicit system: ActorSystem): ActorRef = {
     val fileName = new File(path).getName
     val actor = new MiniDetectionActorComponent() with ResultMiniDetectionProvider {
       val reaper = Reaper(s"MiniDetectionReaper_$fileName")
       override val detector = MiniDetection(path, fileName)
-      override val actorRefResult: ActorRef = testActor.ref
+      override val actorRefResult: ActorRef = testActor
     }
     actor.detector
   }
 }
 
 trait MiniDetectionActorComponent {
-  self: ResultMiniDetectionProvider =>
+  self: ResultMiniDetectionProvider ⇒
 
   object MiniDetection {
     def apply(path: String, fileName: String)(implicit system: ActorSystem) = system.actorOf(Props(new MiniDetection(path)), s"MiniDetection_$fileName")
   }
-  
+
   /**
    * First try to detect on the BOM then on the content.
    * @param file path to the file to test.
@@ -95,17 +94,17 @@ trait MiniDetectionActorComponent {
     lazy val HeuristicActor = HeuristicEncodingDetection(file)(context.system)
 
     def BOMDetectionResultReceive: Receive = {
-      case ResultOfTestBOM(Some(detectedEncoding)) =>
+      case ResultOfTestBOM(Some(detectedEncoding)) ⇒
         sender ! PoisonPill
         actorRefResult ! detectedEncoding.charsetUsed
-      case ResultOfTestBOM(None) =>
+      case ResultOfTestBOM(None) ⇒
         sender ! PoisonPill
         reaper ! RegisterMe(HeuristicActor)
         HeuristicActor ! StartFileAnalyze()
     }
 
     def receive = {
-      case StartFileAnalyze() =>
+      case StartFileAnalyze() ⇒
         context.become(BOMDetectionResultReceive)
         val BOMActor = BOMBasedDetectionActor(file)
         reaper ! RegisterMe(BOMActor)

@@ -38,10 +38,9 @@ import HeuristicEncodingDetection._
 import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
 import com.taj.unicode_detector.Encoding.Operations
 
-
 object TestEncodingWithWrongParameter extends TestTrait {
-  val test: TestFile => Unit = {
-    fileToTest =>
+  val test: TestFile ⇒ Unit = {
+    fileToTest ⇒
       val file = new File(encodedFileFolder, fileToTest.fileName)
       var fileSize = 0l
       var workerCount = 0
@@ -61,8 +60,8 @@ object TestEncodingWithWrongParameter extends TestTrait {
         s"should not be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on its content" in {
           val detection = detectEncoding(file.getAbsolutePath)
           fileToTest.encoding.charsetUsed match {
-            case charset if !charset.equals(BOMEncoding.ASCII.charsetUsed) => detection should not equal charset
-            case _ =>
+            case charset if !charset.equals(BOMEncoding.ASCII.charsetUsed) ⇒ detection should not equal charset
+            case _                                                         ⇒
           }
         }
       }

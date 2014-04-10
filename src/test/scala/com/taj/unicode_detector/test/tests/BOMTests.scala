@@ -30,16 +30,15 @@
 package com.taj.unicode_detector.test.tests
 
 import com.taj.unicode_detector.test.FirstListFilesToTest._
-import java.io.{RandomAccessFile, FileInputStream, File}
+import java.io.{ RandomAccessFile, FileInputStream, File }
 import com.taj.unicode_detector.test.TestFile
 import org.apache.commons.codec.digest.DigestUtils
 import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
 import com.taj.unicode_detector.Encoding.Operations
 
-
 object BOMTests extends TestTrait {
-  val test: ((TestFile, TestFile)) => Unit = {
-    case (first, second) =>
+  val test: ((TestFile, TestFile)) ⇒ Unit = {
+    case (first, second) ⇒
       val firstPath = encodedFileFolder + first.fileName
       val firstFile = new File(firstPath)
       val secondPath = encodedFileFolder + second.fileName
@@ -61,8 +60,8 @@ object BOMTests extends TestTrait {
       }
   }
 
-  val test2: ((TestFile, TestFile)) => Unit = {
-    case (source, manuallyCleaned) =>
+  val test2: ((TestFile, TestFile)) ⇒ Unit = {
+    case (source, manuallyCleaned) ⇒
       s"The BOM of the file ${source.fileName} will be removed and " must {
         val sourcePath = encodedFileFolder + source.fileName
         val manuallyCleanedPath = encodedFileFolder + manuallyCleaned.fileName

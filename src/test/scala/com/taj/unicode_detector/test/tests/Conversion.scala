@@ -40,8 +40,8 @@ import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
 import com.taj.unicode_detector.Encoding.Operations
 
 object Conversion extends TestTrait {
-  val test: TestFile => Unit = {
-    file =>
+  val test: TestFile ⇒ Unit = {
+    file ⇒
       val fileToConvert = encodedFileFolder + file.fileName
       val convertedFile = s"${tempFilesFolder}converted_to_ASCII_from_${file.fileName}"
       s"convert the file ${file.fileName} to ASCII" in {
@@ -53,8 +53,8 @@ object Conversion extends TestTrait {
       }
   }
 
-  val test2: TestFile => Unit = {
-    fileToTest =>
+  val test2: TestFile ⇒ Unit = {
+    fileToTest ⇒
       val file = new File(encodedFileFolder, fileToTest.fileName)
 
       s"convert the file ${file.getName} to UTF-8" in {

@@ -29,8 +29,8 @@
 
 package com.taj.unicode_detector.Encoding
 
-import java.io.{File, FileOutputStream, FileInputStream}
-import java.nio.file.{Paths, Files}
+import java.io.{ File, FileOutputStream, FileInputStream }
+import java.nio.file.{ Paths, Files }
 import java.nio.charset.Charset
 import akka.actor._
 import akka.util.Timeout
@@ -38,10 +38,9 @@ import scala.concurrent.Await
 import akka.pattern.ask
 import java.util.concurrent.TimeUnit
 import scala.Some
-import MessageResult.{ResultOfTestBOM, StartFileAnalyze}
+import MessageResult.{ ResultOfTestBOM, StartFileAnalyze }
 import com.typesafe.scalalogging.slf4j.Logging
 import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
-
 
 /**
  * Main class to detect a file encoding based on its BOM.
@@ -54,8 +53,8 @@ object Operations extends Logging {
     val system: ActorSystem = ActorSystem("ActorSystemFileIdentification")
     val detector = system.actorOf(Props(new FullDetection(file)), name = "Detector")
     Await.result(detector ? StartFileAnalyze(), timeout.duration) match {
-      case ResultOfTestBOM(Some(detectedEncoding)) => detectedEncoding.charsetUsed
-      case _ => throw new IllegalArgumentException("Failed to retrieve result from Actor during the check")
+      case ResultOfTestBOM(Some(detectedEncoding)) ⇒ detectedEncoding.charsetUsed
+      case _                                       ⇒ throw new IllegalArgumentException("Failed to retrieve result from Actor during the check")
     }
   }
 
@@ -69,9 +68,9 @@ object Operations extends Logging {
     implicit val system: ActorSystem = ActorSystem("SystemMiniDetect")
     val detector = BackMiniDetectionProduction(file)
     val result = Await.result(detector ? StartFileAnalyze(), timeout.duration) match {
-      case charset: Charset => charset
-      case Some(charset: Charset) => charset
-      case u => throw new IllegalArgumentException(s"Failed to retrieve result from Actor: $u.")
+      case charset: Charset       ⇒ charset
+      case Some(charset: Charset) ⇒ charset
+      case u                      ⇒ throw new IllegalArgumentException(s"Failed to retrieve result from Actor: $u.")
     }
     result
   }
@@ -92,7 +91,7 @@ object Operations extends Logging {
     if (paths.size < 2) throw new IllegalArgumentException(s"Not enough files to compare (${paths.size})")
     val charset: Charset = backMiniDetect(paths.head)
     paths.tail.forall {
-      path: String =>
+      path: String ⇒
         val detectedEncoding: Charset = backMiniDetect(path)
         val same = charset.equals(detectedEncoding)
         if (!same) logger.debug(s"The first file [${paths.head}] is encoded as ${charset.name()} but the file [$path] is encoded as ${detectedEncoding.name}.")
@@ -107,8 +106,8 @@ object Operations extends Logging {
    */
   def removeBOM(path: String): FileInputStream = {
     BOMEncoding.detectBOM(path) match {
-      case None => new FileInputStream(path)
-      case Some(bom) =>
+      case None ⇒ new FileInputStream(path)
+      case Some(bom) ⇒
         val toDrop = bom.BOM.size
         val f = new FileInputStream(path)
         val realSkipped = f.skip(toDrop)
@@ -135,8 +134,9 @@ object Operations extends Logging {
       Iterator
         .continually(input.read(bytes))
         .takeWhile(_ != -1)
-        .foreach(read => output.write(bytes, 0, read))
-    } finally {
+        .foreach(read ⇒ output.write(bytes, 0, read))
+    }
+    finally {
       input.close()
       output.close()
     }
@@ -152,12 +152,12 @@ object Operations extends Logging {
     val bytes = new Array[Byte](1024)
     val output = new FileOutputStream(destination, true)
     try paths.drop(1).foreach {
-      path =>
+      path ⇒
         val input = removeBOM(path)
         try Iterator
           .continually(input.read(bytes))
           .takeWhile(_ != -1)
-          .foreach(read => try output.write(bytes, 0, read))
+          .foreach(read ⇒ try output.write(bytes, 0, read))
         finally input.close()
     } finally output.close()
   }

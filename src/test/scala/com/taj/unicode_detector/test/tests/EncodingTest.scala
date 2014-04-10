@@ -37,17 +37,16 @@ import com.taj.unicode_detector.test.TestFile
 import com.taj.unicode_detector.Encoding.Heuristic.HeuristicEncodingDetection
 import HeuristicEncodingDetection._
 import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
-import com.taj.unicode_detector.Encoding.{MiniDetectionTest, Operations}
-import akka.testkit.{ImplicitSender, TestKitBase, TestProbe}
+import com.taj.unicode_detector.Encoding.{ MiniDetectionTest, Operations }
+import akka.testkit.{ ImplicitSender, TestKitBase, TestProbe }
 import com.taj.unicode_detector.Encoding.MessageResult.StartFileAnalyze
 import akka.actor.ActorSystem
 import org.scalatest.BeforeAndAfterAll
 
-
 object EncodingTest extends TestTrait with TestKitBase with ImplicitSender with BeforeAndAfterAll {
   implicit lazy val system = ActorSystem("AkkaTestSystem2")
-  val test: TestFile => Unit = {
-    fileToTest =>
+  val test: TestFile ⇒ Unit = {
+    fileToTest ⇒
       val file = new File(encodedFileFolder, fileToTest.fileName)
       var fileSize = 0l
       var workerCount = 0
@@ -67,8 +66,8 @@ object EncodingTest extends TestTrait with TestKitBase with ImplicitSender with 
         s"should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on an Heuristic analyze only." in {
           val detection = detectEncoding(file.getAbsolutePath)
           fileToTest.encoding.charsetUsed match {
-            case charset if !charset.equals(BOMEncoding.ASCII.charsetUsed) => detection should equal(charset)
-            case _ =>
+            case charset if !charset.equals(BOMEncoding.ASCII.charsetUsed) ⇒ detection should equal(charset)
+            case _                                                         ⇒
           }
         }
 
@@ -76,13 +75,13 @@ object EncodingTest extends TestTrait with TestKitBase with ImplicitSender with 
           s"METHOD 1: should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on BOM analyze then heuristic analyze." in {
 
             val probe = TestProbe()
-            val actor = MiniDetectionTest(file.getAbsolutePath, probe)
+            val actor = MiniDetectionTest(file.getAbsolutePath, probe.ref)
 
             actor ! StartFileAnalyze()
 
             val message = probe.fishForMessage(hint = "Filter messages until getting the final result.") {
-              case tmpMessage if tmpMessage.isInstanceOf[Charset] => true
-              case _ => false
+              case tmpMessage if tmpMessage.isInstanceOf[Charset] ⇒ true
+              case _                                              ⇒ false
             }
 
             message should be(fileToTest.encoding.charsetUsed)
@@ -91,8 +90,8 @@ object EncodingTest extends TestTrait with TestKitBase with ImplicitSender with 
           s"METHOD 2: should be detected as encoded with charset ${fileToTest.encoding.charsetUsed} based on BOM analyze then heuristic analyze." in {
             val detection = Operations.backMiniDetect(file.getAbsolutePath)
             fileToTest.encoding.charsetUsed match {
-              case charset if !charset.equals(BOMEncoding.ASCII.charsetUsed) => detection should equal(charset)
-              case _ =>
+              case charset if !charset.equals(BOMEncoding.ASCII.charsetUsed) ⇒ detection should equal(charset)
+              case _                                                         ⇒
             }
           }
         }

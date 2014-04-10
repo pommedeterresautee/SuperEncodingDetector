@@ -32,7 +32,6 @@ package com.taj.unicode_detector.CommandLine
 import java.io.File
 import org.rogach.scallop.ScallopConf
 
-
 object CommandLineParser {
   def apply(args: Array[String]) = new CommandLineParser(args)
 }
@@ -42,7 +41,7 @@ object CommandLineParser {
  * @param args arguments provided by the command line.
  */
 class CommandLineParser(args: Array[String]) extends ScallopConf(args: Array[String]) {
-  banner( """
+  banner("""
             | ____                          _____                     _                 ____       _            _
             |/ ___| _   _ _ __   ___ _ __  | ____|_ __   ___ ___   __| (_)_ __   __ _  |  _ \  ___| |_ ___  ___| |_ ___  _ __
             |\___ \| | | |  _ \ / _ \ '__| |  _| | '_ \ / __/ _ \ / _` | | '_ \ / _` | | | | |/ _ \ __/ _ \/ __| __/ _ \| '__|
@@ -63,7 +62,7 @@ Example: java -jar SuperEncodingDetector.jar --input .${File.separator}path1${Fi
 
 For usage see below:
            """)
-  val filesExist: List[String] => Boolean = _.forall {
+  val filesExist: List[String] ⇒ Boolean = _.forall {
     new File(_).isFile
   }
 
@@ -83,6 +82,6 @@ For usage see below:
   dependsOnAll(convert8859_15, List(outputFolder))
   //    dependsOnAll(convertASCII, List(outputFolder))
 
-  conflicts(merge, List(encoding, help /*, version*/))
-  conflicts(encoding, List(merge, help /*, version*/))
+  conflicts(merge, List(encoding, help /*, version*/ ))
+  conflicts(encoding, List(merge, help /*, version*/ ))
 }

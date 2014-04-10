@@ -2,7 +2,6 @@ package com.taj.unicode_detector.Encoding.BOM
 
 import java.nio.charset.Charset
 
-
 object BOMFileEncoding {
   def apply(charsetUsed: Charset) = new BOMFileEncoding(charsetUsed, List(), List())
 }

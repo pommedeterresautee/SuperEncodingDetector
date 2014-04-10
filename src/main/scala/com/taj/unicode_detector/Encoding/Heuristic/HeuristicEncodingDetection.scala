@@ -31,7 +31,7 @@ package com.taj.unicode_detector.Encoding.Heuristic
 
 import java.nio.charset.Charset
 import com.ibm.icu.text.CharsetDetector
-import java.io.{BufferedInputStream, FileInputStream}
+import java.io.{ BufferedInputStream, FileInputStream }
 import akka.actor._
 import com.typesafe.scalalogging.slf4j.Logging
 import com.taj.unicode_detector.Encoding.BOM.BOMFileEncoding
@@ -40,7 +40,6 @@ import com.taj.unicode_detector.Encoding.MessageResult.ResultOfTestBOM
 import com.taj.unicode_detector.ActorLife.StartRegistration
 import com.taj.unicode_detector.Encoding.MessageResult.StartFileAnalyze
 import scala.Some
-
 
 object HeuristicEncodingDetection extends Logging {
   def apply(path: String)(implicit system: ActorSystem): ActorRef = {
@@ -70,12 +69,12 @@ object HeuristicEncodingDetection extends Logging {
  */
 class HeuristicEncodingDetection(path: String) extends Actor {
   def receive = {
-    case StartRegistration(register) =>
+    case StartRegistration(register) ⇒
       register ! RegisterMe(self)
-    case StartFileAnalyze() =>
+    case StartFileAnalyze() ⇒
       val encoding = HeuristicEncodingDetection.detectEncoding(path)
       val result: ResultOfTestBOM = ResultOfTestBOM(Some(BOMFileEncoding(encoding)))
       sender ! result
-    case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
+    case _ ⇒ throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
   }
 }

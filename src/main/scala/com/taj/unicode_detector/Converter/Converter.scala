@@ -30,8 +30,8 @@
 package com.taj.unicode_detector.Converter
 
 import java.text.Normalizer
-import java.nio.charset.{StandardCharsets, Charset}
-import scala.io.{BufferedSource, Source}
+import java.nio.charset.{ StandardCharsets, Charset }
+import scala.io.{ BufferedSource, Source }
 import java.io._
 import com.taj.unicode_detector.Encoding.Heuristic.HeuristicEncodingDetection
 import HeuristicEncodingDetection._
@@ -43,12 +43,12 @@ import com.taj.unicode_detector.Encoding.Operations
  * Convert text files to a specific format.
  */
 object Converter {
-  private val convertAnyStringToASCII: String => String =
-    text => Normalizer
+  private val convertAnyStringToASCII: String ⇒ String =
+    text ⇒ Normalizer
       .normalize(text, Normalizer.Form.NFD)
       .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
 
-  private val noTransformation: String => String = line => line
+  private val noTransformation: String ⇒ String = line ⇒ line
 
   /**
    * Convert a text file to ASCII.
@@ -71,24 +71,24 @@ object Converter {
    */
   def convert2ISO_8859_15(sourcePath: String, destinationPath: String) = convertWithTransformation(sourcePath, destinationPath, Charset.forName("ISO-8859-15"), noTransformation)
 
-  private def convertWithTransformation(sourcePath: String, destinationPath: String, destinationEncoding: Charset, transformation: String => String) {
+  private def convertWithTransformation(sourcePath: String, destinationPath: String, destinationEncoding: Charset, transformation: String ⇒ String) {
     val sourceEncoding: Charset = detectEncoding(sourcePath)
     val sourceIS: FileInputStream = BOMEncoding.getBOMfromCharset(sourceEncoding) match {
-      case Some(bom) => Operations.removeBOM(sourcePath)
-      case None => new FileInputStream(sourcePath)
+      case Some(bom) ⇒ Operations.removeBOM(sourcePath)
+      case None      ⇒ new FileInputStream(sourcePath)
     }
     val content: BufferedSource = Source.fromInputStream(sourceIS, sourceEncoding.name())
     val output = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(destinationPath), destinationEncoding.name()))
     try {
       val buffer = content.getLines()
       buffer
-        .map(lineOfText => transformation(lineOfText) + (if (buffer.hasNext) sys.props("line.separator") else ""))
+        .map(lineOfText ⇒ transformation(lineOfText) + (if (buffer.hasNext) sys.props("line.separator") else ""))
         .foreach(output.write)
-    } finally {
+    }
+    finally {
       content.close()
       output.close()
     }
   }
-
 
 }

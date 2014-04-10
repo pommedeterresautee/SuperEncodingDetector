@@ -39,7 +39,6 @@ import SecondListFilesToTest._
 import ThirdListFilesToTestWrongParameters._
 import com.taj.unicode_detector.test.tests._
 
-
 /**
  * Test the detection algorithm with each kind of file.
  */
@@ -54,7 +53,6 @@ class MainTest extends Suites(BOMTests, Conversion, DifferentBOM, EncodingTest, 
     tmpFolder.listFiles().filter(!_.getName.contentEquals(".gitignore")).foreach(_.delete())
     tmpFolder.listFiles().length should be > 0
   }
-
 
   List(UTF8_with_BOM, UTF8_without_BOM, UTF16_BE, UTF16_LE, ASCII, Windows_1252, UTF8_with_BOM_bis, UTF8_without_BOM_bis, UTF16_BE_bis, UTF16_LE_bis, UTF8_with_BOM_manually_cleaned, UTF16_BE_manually_cleaned, UTF16_LE_manually_cleaned)
     .foreach(EncodingTest.test)

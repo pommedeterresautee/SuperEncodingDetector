@@ -6,15 +6,14 @@ import com.taj.unicode_detector.Encoding.MessageResult.StartFileAnalyze
 import scala.Some
 import com.taj.unicode_detector.ActorLife.KillAkka
 
-
 class SendBackActor(miniDetector: ActorRef, reaper: ActorRef) extends Actor {
   var originalSender: Option[ActorRef] = None
 
   override def receive: Actor.Receive = {
-    case StartFileAnalyze() =>
+    case StartFileAnalyze() ⇒
       originalSender = Some(sender())
       miniDetector ! StartFileAnalyze()
-    case charset: Charset =>
+    case charset: Charset ⇒
       originalSender.get ! charset
       self ! PoisonPill
       reaper ! KillAkka()

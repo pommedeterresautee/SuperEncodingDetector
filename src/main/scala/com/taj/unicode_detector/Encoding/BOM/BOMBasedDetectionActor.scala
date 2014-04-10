@@ -23,11 +23,11 @@ class BOMBasedDetectionActor(file: String) extends Actor {
   import MessageResult._
 
   def receive = {
-    case StartRegistration(register) =>
+    case StartRegistration(register) ⇒
       register ! RegisterMe(self)
-    case StartFileAnalyze() =>
+    case StartFileAnalyze() ⇒
       val result = detectBOM(file)
       sender ! ResultOfTestBOM(result)
-    case _ => throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
+    case _ ⇒ throw new IllegalArgumentException(s"Failed to retrieve result from ${self.path} during BOM detection")
   }
 }

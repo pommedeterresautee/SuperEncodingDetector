@@ -2,8 +2,7 @@ package com.taj.unicode_detector.test
 
 import java.io.File
 import java.nio.charset.Charset
-import com.taj.unicode_detector.Encoding.BOM.{BOMEncoding, BOMFileEncoding}
-
+import com.taj.unicode_detector.Encoding.BOM.{ BOMEncoding, BOMFileEncoding }
 
 /**
  * A case class to contain the parameters of a test file.

@@ -65,19 +65,19 @@ class Reaper(var orderToKillAkka: Boolean) extends Actor with Logging {
   val watched: mutable.Set[ActorRef] = mutable.Set()
 
   def receive = {
-    case RegisterMe(parent) =>
+    case RegisterMe(parent) ⇒
       logger.debug(s"*** Register actor ${parent.path} ***")
       context.watch(parent)
       watched += parent
-    case Terminated(ref) =>
+    case Terminated(ref) ⇒
       logger.debug(s"*** Actor ${ref.path} has been removed ***")
       watched -= ref
       byeBye()
-    case KillAkka() =>
+    case KillAkka() ⇒
       logger.debug("*** Received KILLALL call ***")
       orderToKillAkka = true
       byeBye()
-    case a => throw new IllegalArgumentException(s"Sent bad argument to ${self.path}: ${a.toString}")
+    case a ⇒ throw new IllegalArgumentException(s"Sent bad argument to ${self.path}: ${a.toString}")
   }
 
   /**
@@ -87,6 +87,7 @@ class Reaper(var orderToKillAkka: Boolean) extends Actor with Logging {
     if (orderToKillAkka && watched.isEmpty) {
       logger.debug("*** Stop the Akka system ***")
       context.system.shutdown()
-    } else logger.debug(s"*** Still ${watched.size} actors watched ***\n${watched.toString()}")
+    }
+    else logger.debug(s"*** Still ${watched.size} actors watched ***\n${watched.toString()}")
   }
 }
