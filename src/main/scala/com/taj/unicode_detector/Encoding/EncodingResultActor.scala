@@ -3,11 +3,11 @@ package com.taj.unicode_detector.Encoding
 import akka.actor._
 import java.nio.charset.Charset
 import java.io.{ FileWriter, BufferedWriter, File }
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import scala.Some
 import com.taj.unicode_detector.ActorLife.{ RegisterMe, StartRegistration }
 
-object EncodingResultActor extends Logging {
+object EncodingResultActor extends LazyLogging {
   def apply(path: String, output: Option[String])(implicit system: ActorSystem): ActorRef = {
     system.actorOf(Props(new EncodingResultActor(path, output)), "EncodingResult")
   }
@@ -16,7 +16,7 @@ object EncodingResultActor extends Logging {
 /**
  * Manage the result of an encoding detection result
  */
-class EncodingResultActor(path: String, output: Option[String]) extends Actor with Logging {
+class EncodingResultActor(path: String, output: Option[String]) extends Actor with LazyLogging {
   override def receive: Receive = {
     case StartRegistration(register) ⇒
       register ! RegisterMe(self)

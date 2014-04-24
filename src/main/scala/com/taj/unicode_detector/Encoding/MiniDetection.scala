@@ -32,7 +32,7 @@ package com.taj.unicode_detector.Encoding
 import com.taj.unicode_detector.Encoding.Heuristic.HeuristicEncodingDetection
 import akka.actor._
 import com.taj.unicode_detector.Encoding.BOM.BOMBasedDetectionActor
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import com.taj.unicode_detector.Reaper
 
 import com.taj.unicode_detector.Encoding.MessageResult.ResultOfTestBOM
@@ -47,7 +47,7 @@ trait ResultMiniDetectionProvider {
   val actorRefResult: ActorRef
 }
 
-object BackMiniDetectionProduction extends Logging {
+object BackMiniDetectionProduction extends LazyLogging {
   def apply(path: String)(implicit system: ActorSystem): ActorRef = new BackMiniDetectionProvider(path).actorRefResult
 }
 
@@ -57,7 +57,7 @@ class BackMiniDetectionProvider(path: String)(implicit system: ActorSystem) exte
   override lazy val actorRefResult = SendBackActor(detector, reaper)
 }
 
-object RealMiniDetectionProduction extends Logging {
+object RealMiniDetectionProduction extends LazyLogging {
   def apply(path: String, output: Option[String])(implicit system: ActorSystem): ActorRef = new RealMiniDetectionProvider(path, output).detector
 }
 
@@ -67,7 +67,7 @@ class RealMiniDetectionProvider(path: String, output: Option[String])(implicit s
   override lazy val actorRefResult = EncodingResultActor(path, output)
 }
 
-object MiniDetectionTest extends Logging {
+object MiniDetectionTest extends LazyLogging {
   def apply(path: String, testActor: ActorRef)(implicit system: ActorSystem): ActorRef = {
     val fileName = new File(path).getName
     val actor = new MiniDetectionActorComponent() with ResultMiniDetectionProvider {
@@ -90,7 +90,7 @@ trait MiniDetectionActorComponent {
    * First try to detect on the BOM then on the content.
    * @param file path to the file to test.
    */
-  class MiniDetection(file: String) extends Actor with Logging {
+  class MiniDetection(file: String) extends Actor with LazyLogging {
     lazy val HeuristicActor = HeuristicEncodingDetection(file)(context.system)
 
     def BOMDetectionResultReceive: Receive = {

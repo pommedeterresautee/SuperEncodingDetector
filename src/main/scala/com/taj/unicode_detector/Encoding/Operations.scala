@@ -39,13 +39,13 @@ import akka.pattern.ask
 import java.util.concurrent.TimeUnit
 import scala.Some
 import MessageResult.{ ResultOfTestBOM, StartFileAnalyze }
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import com.taj.unicode_detector.Encoding.BOM.BOMEncoding
 
 /**
  * Main class to detect a file encoding based on its BOM.
  */
-object Operations extends Logging {
+object Operations extends LazyLogging {
 
   def fullDetect(file: String): Charset = {
     implicit val timeout = Timeout(2, TimeUnit.MINUTES)
@@ -158,6 +158,7 @@ object Operations extends Logging {
           .continually(input.read(bytes))
           .takeWhile(_ != -1)
           .foreach(read ⇒ try output.write(bytes, 0, read))
+        catch { case e: Throwable ⇒ }
         finally input.close()
     } finally output.close()
   }

@@ -33,7 +33,7 @@ import java.nio.charset.Charset
 import com.ibm.icu.text.CharsetDetector
 import java.io.{ BufferedInputStream, FileInputStream }
 import akka.actor._
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import com.taj.unicode_detector.Encoding.BOM.BOMFileEncoding
 import com.taj.unicode_detector.ActorLife.RegisterMe
 import com.taj.unicode_detector.Encoding.MessageResult.ResultOfTestBOM
@@ -41,7 +41,7 @@ import com.taj.unicode_detector.ActorLife.StartRegistration
 import com.taj.unicode_detector.Encoding.MessageResult.StartFileAnalyze
 import scala.Some
 
-object HeuristicEncodingDetection extends Logging {
+object HeuristicEncodingDetection extends LazyLogging {
   def apply(path: String)(implicit system: ActorSystem): ActorRef = {
     system.actorOf(Props(new HeuristicEncodingDetection(path)), "HeuristicEncodingDetection")
   }

@@ -4,12 +4,12 @@ import org.slf4j.impl.SimpleLogger
 import java.io.File
 import com.taj.unicode_detector.Encoding.Operations
 import com.taj.unicode_detector.Converter
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 
 /**
  * Execute the command send through the command line.
  */
-object CommandLineExecutor extends Logging {
+object CommandLineExecutor extends LazyLogging {
   def apply(args: Array[String]) {
     val opts = CommandLineParser(args)
 

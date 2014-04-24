@@ -2,7 +2,7 @@ package com.taj.unicode_detector.Encoding.FullCheck
 
 import com.taj.unicode_detector.Encoding.BOM.BOMFileEncoding
 import akka.actor._
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import java.io.File
 import com.taj.unicode_detector.ParamAkka
 import com.taj.unicode_detector.Encoding.MessageResult.ResultOfTestBOM
@@ -29,7 +29,7 @@ object FileAnalyzer {
  * @param path to the file to analyze.
  * @param testToOperate test to apply to each byte to valid an encoding.
  */
-class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate: Array[Byte] ⇒ Int) extends Actor with Logging {
+class FileAnalyzer(encodingTested: BOMFileEncoding, path: String, testToOperate: Array[Byte] ⇒ Int) extends Actor with LazyLogging {
   val totalLengthToAnalyze = new File(path).length()
   val numberOfPartToAnalyze = (totalLengthToAnalyze / ParamAkka.sizeOfaPartToAnalyze).toInt match {
     case 0          ⇒ 1

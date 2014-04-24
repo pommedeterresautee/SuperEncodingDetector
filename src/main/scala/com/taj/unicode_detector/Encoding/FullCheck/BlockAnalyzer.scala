@@ -3,7 +3,7 @@ package com.taj.unicode_detector.Encoding.FullCheck
 import java.io.RandomAccessFile
 import com.taj.unicode_detector.Encoding.FullCheck.FileFullAnalyzeStateMessages.{ AnalyzeBlock, Result }
 import akka.actor.{ ActorContext, ActorRef, Props, Actor }
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import akka.routing.RoundRobinPool
 import com.taj.unicode_detector.Encoding.BOM.BOMFileEncoding
 import com.taj.unicode_detector.ParamAkka
@@ -20,7 +20,7 @@ private object BlockAnalyzer {
 /**
  * Actually process the encoding detection.
  */
-private class BlockAnalyzer() extends Actor with Logging {
+private class BlockAnalyzer() extends Actor with LazyLogging {
 
   def receive = {
     case AnalyzeBlock(bigDataFilePath, startRead, length, buffer, testToOperate) ⇒
