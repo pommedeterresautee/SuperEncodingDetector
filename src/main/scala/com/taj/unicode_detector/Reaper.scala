@@ -30,12 +30,13 @@
 package com.taj.unicode_detector
 
 import akka.actor._
-import com.typesafe.scalalogging.slf4j.LazyLogging
+import com.typesafe.scalalogging.slf4j.{ Logger, LazyLogging }
 import com.taj.unicode_detector.ActorLife.RegisterMe
 
 import akka.actor.Terminated
 import com.taj.unicode_detector.ActorLife.KillAkka
 import scala.collection.mutable
+import org.slf4j.LoggerFactory
 
 object ActorLife {
 
@@ -62,6 +63,7 @@ object Reaper {
  * @param orderToKillAkka if true, when ready to be stopped, send KillAkka() to stop the system.
  */
 class Reaper(var orderToKillAkka: Boolean) extends Actor with LazyLogging {
+
   val watched: mutable.Set[ActorRef] = mutable.Set()
 
   def receive = {

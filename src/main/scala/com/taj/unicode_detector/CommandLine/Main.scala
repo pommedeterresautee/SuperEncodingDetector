@@ -30,8 +30,10 @@
 package com.taj.unicode_detector.CommandLine
 
 import java.io.File
+import org.slf4j.LoggerFactory
 
 object Main extends App {
+  LoggerFactory.getLogger("stopMessage")
 
   val testResourcesFolder = s".${File.separator}src${File.separator}test${File.separator}resources${File.separator}"
   val encodedFileFolder = testResourcesFolder + s"encoded_files${File.separator}"
@@ -41,5 +43,5 @@ object Main extends App {
   val arg = Array("--encoding", BIG_FILE, SECOND_FILE)
   val help = Array("--help")
 
-  CommandLineExecutor(arg)
+  CommandLineExecutor(args)
 }
