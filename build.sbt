@@ -10,7 +10,7 @@ import ReleaseStateTransformations._
 
 name := "super_encoding_detector"
 
-version := "1.0.3"
+version := "1.0.4"
 
 scalaVersion := "2.11.0"
 
@@ -21,7 +21,7 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-simple" % "1.7.7",
   "org.rogach" %% "scallop" % "0.9.5",
   "com.typesafe.akka" %% "akka-testkit" % "2.3.2" % "test",
-  "org.scalatest" %% "scalatest" % "2.1.4" % "test",
+  "org.scalatest" %% "scalatest" % "2.1.5" % "test",
   "commons-codec" % "commons-codec" % "1.9" % "test"
 )
 
@@ -34,7 +34,6 @@ scalacOptions ++= Seq(
   "-Ywarn-inaccessible",
   "-Ywarn-nullary-unit",
   "-Ywarn-nullary-override",
-  "-Ywarn-numeric-widen",
   "-Ywarn-value-discard"
 )
 

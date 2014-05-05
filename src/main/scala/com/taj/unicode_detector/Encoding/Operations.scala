@@ -157,7 +157,7 @@ object Operations extends LazyLogging {
         try Iterator
           .continually(input.read(bytes))
           .takeWhile(_ != -1)
-          .foreach(read ⇒ try output.write(bytes, 0, read))
+          .foreach(read ⇒ output.write(bytes, 0, read))
         catch { case e: Throwable ⇒ }
         finally input.close()
     } finally output.close()
